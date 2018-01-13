@@ -1,0 +1,122 @@
+html *{
+    font-family: Arial;
+}
+#titlebar {
+    position: fixed;
+    top: 0;
+    width: 102%;
+    background-color: lightgrey;
+    margin-left: -15px;
+    height: 30px;
+}
+#titlebar p{
+    margin-left: 35px;
+    font-size: 25px;
+    margin-top: 0px;
+}
+#addPortfolioDiv{
+    margin-left: 25px;
+    margin-top: 50px;
+}
+#addPortfolioForm{
+    float: left;
+}
+#title{
+    font-size: 22px;
+    float: left;
+    margin-right: 40px;
+    margin-top: 7.5px;
+    width: 20%;
+    word-wrap: break-word;
+}
+#portfolios{
+    position: relative;
+    height: 100%;
+    width: 100%;
+    margin-left: 10px;
+    margin-top: 20px;
+}
+#addPortfolioButton{
+    background-color: white;
+    width: 150px;
+    height: 40px;
+    border: 3px solid black;
+    font-size: 16px;
+    display: block;
+}
+#addPortfolioButton:hover{
+    background-color: lightgrey;
+    cursor: pointer;
+}
+.portfolioButton{
+    width: 120px; 
+    height: 40px;
+    font-size: 18px;
+    background-color: white;
+    border: 2px solid black;
+    margin: 5px;
+}
+.portfolioButton:hover{
+    background-color: lightgrey;
+    cursor: pointer;
+}
+#removePortfolioButton{
+    width: 160px; 
+    height: 40px;
+    font-size: 18px;
+    float: right;
+    background-color: white;
+    border: 2px solid black;
+    margin-right: 10px;
+}
+#removePortfolioButton:hover{
+    background-color: lightgrey;
+    cursor: pointer;
+}
+#removeSelectedButton{
+    width: 160px;
+    height: 40px;
+    font-size: 18px; 
+    background-color: white;
+    border: 2px solid black;
+    margin: 5px;
+    float: right;
+}
+#removeSelectedButton:hover{
+    background-color: lightgrey;
+    cursor: pointer;
+}
+.currencyButton{
+    background-color: white;
+    border: 2px solid black;
+    width: 100px; 
+    height: 40px;
+    font-size: 18px;
+    background-color: white;
+    margin-left: 10px;
+}
+.currencyButton:hover{
+    background-color: lightgrey;
+    cursor: pointer;
+}
+table{
+    border: 1px solid black;
+    border-collapse: collapse;
+    display: none;
+}
+td{
+    border: 1px solid black;
+    padding: 8px;
+    background-color: white;
+    text-align: center;
+}
+th{
+    background-color: lightgrey;
+    border: 1px solid black;
+    width: 25%;
+    height: 25%;
+    padding: 8px;
+    text-align: center;
+    font-weight: normal;
+    font-size: 17px;
+}

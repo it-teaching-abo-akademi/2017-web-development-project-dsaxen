@@ -1,5 +1,6 @@
 var stockname;
 var quantity;
+var currency = "$";
 
 window.onload=function(){ //this function is executed after DOM has fully loaded
     
@@ -24,6 +25,7 @@ function getRequest(url, callback, context){
 }
 
 function addPortfolio(){
+    var totalValue = 0;
     var portfolioName = prompt("Please enter the portfolio name:");
 
     if (portfolioName == null || portfolioName == ""){
@@ -44,6 +46,10 @@ function addPortfolio(){
     middleDiv = document.createElement("div");
     middleDiv.id = "middleDiv";
     middleDiv.style.cssText = "position: relative; top: 10%; width: 90%; height: 50%; border: 2px solid black; font-size: 14px; margin: 0 auto; overflow-y: scroll; overflow-x: hidden;";
+
+    totalValueDiv = document.createElement("div");
+    totalValueDiv.id = "totalValueDiv";
+    totalValueDiv.style.cssText = "position: relative; width: 50%; height: 10%; margin-left: 5%; margin-top: 9%; font-weight: bold;";
 
     bottomDiv = document.createElement("div"); //create div for bottom line (three buttons)
     bottomDiv.style.cssText = "position: absolute; bottom: 0; width: 100%";
@@ -86,6 +92,9 @@ function addPortfolio(){
     
     tbl.appendChild(tr); //append row to table
     middleDiv.appendChild(tbl); //append table to middle div
+    
+    var totalValueText = document.createTextNode("Total value of "+ portfolioName+": "+totalValue + " "+currency);
+    totalValueDiv.appendChild(totalValueText);
 
     //create and append buttons
 
@@ -127,8 +136,9 @@ function addPortfolio(){
     bottomDiv.appendChild(refreshButton);
     bottomDiv.appendChild(removeSelectedButton);
 
-    portfolioDiv.appendChild(topDiv); //append top line to the parent
+    portfolioDiv.appendChild(topDiv); //append top line with portfolio name, currency exchange and removal..
     portfolioDiv.appendChild(middleDiv); //append middle line (data)
+    portfolioDiv.appendChild(totalValueDiv); //append div line with total value
     portfolioDiv.appendChild(bottomDiv); //append bottom line to the parent
 
     showEurosButton.addEventListener("click", showEuros); //add listeners to the buttons
@@ -188,6 +198,7 @@ function removeSelected(){
     var table = this.parentNode.parentNode.childNodes[1].childNodes[0]; // get the table from the DOM tree
     var checkBoxes = table.getElementsByTagName("input"); //get the checkbox list
     var selectedBoxes = false;
+    var context = this;
 
     for (var i = 0; i < checkBoxes.length; i++){ //loop through the table checkboxes to find which ones are selected
         if (checkBoxes[i].checked == true){ //if a row is selected, delete row and decrease length by 1.
@@ -195,7 +206,7 @@ function removeSelected(){
         }
     }
     if(selectedBoxes == false){
-        alert("You have not selected any stocks.");
+        alert("You have not selected any stocks in this portfolio.");
         return;
     }
     if(confirm("Are you sure you want to remove selected stocks?")){
@@ -206,6 +217,7 @@ function removeSelected(){
                 i--;
             }
         }
+        updateTotalValue(context); //update the total value, send current context to function
     }
     else{
         return;
@@ -238,9 +250,9 @@ function callback(data, context){
 
 
     var text = document.createTextNode(stockName);
-    var text2 = document.createTextNode(unitValue + " $");
+    var text2 = document.createTextNode(unitValue + " " +currency);
     var text3 = document.createTextNode(quantity);
-    var text4 = document.createTextNode(unitValue * quantity + " $");
+    var text4 = document.createTextNode(Math.round(unitValue * quantity * 100) / 100 + " " +currency);
 
     //End of API values input
 
@@ -262,4 +274,28 @@ function callback(data, context){
     table.appendChild(tr);
 
     table.style.display = "table"; //show table (it is initially hidden)
+
+    updateTotalValue(context);
+}
+function updateTotalValue(context){ //updating the total value of the portfolio.
+    var totalValue = 0;
+    var totalValueCell = 3;
+    var middleDiv = context.parentNode.parentNode.childNodes[1]; 
+    var table = middleDiv.childNodes[0];
+    var tableLength = table.rows.length;
+
+    //check if stockname already exists TODO
+    for(var i = 1; i<tableLength; i++){
+        totalValue = totalValue + parseFloat(table.getElementsByTagName("td")[totalValueCell].innerText.split(" ")[0])
+        totalValueCell = totalValueCell + 5;
+    }
+
+    //update the total value text
+    var totalValueDiv = context.parentNode.parentNode.childNodes[2];
+    totalValueDiv.removeChild(totalValueDiv.childNodes[0]);
+
+    var portfolioName = context.parentNode.parentNode.childNodes[0].childNodes[0].innerHTML;
+
+    var totalValueText = document.createTextNode("Total value of "+ portfolioName+": "+totalValue + " "+currency);
+    totalValueDiv.appendChild(totalValueText);
 }

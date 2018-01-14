@@ -10,12 +10,12 @@ window.onload=function(){ //this function is executed after DOM has fully loaded
 }
 
 // A SIMPLE GET REQUEST FUNCTION
-function getRequest(url, callback, context){
+function getRequest(url, addStockCallback, context){
     var xmlHttp = new XMLHttpRequest();
     xmlHttp.onreadystatechange = function(){ //called when the server responds with data
         if(this.readyState == 4 && this.status == 200){
             var getData = JSON.parse(xmlHttp.responseText);
-            callback(getData, context); //pass the list and context to callback function
+            addStockCallback(getData, context); //pass the list and context to addStockCallback function
         }
     }
     xmlHttp.open("GET", url, true);
@@ -181,7 +181,7 @@ function removePortfolio(){
 
 function addStock(){
 
-    var self = this; //store the context to a variable
+    var context = this; //store the context to a variable
 
     stockName = prompt("Please enter the stock symbol:");
 
@@ -194,44 +194,9 @@ function addStock(){
     if (quantity == null || quantity == "" || quantity != parseInt(quantity, 10)){
         return;
     }
-    getRequest("https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol=" +stockName+ "&interval=1min&apikey=VV6I5M93ATB8Z7JW", callback, self); //send the context further
+    getRequest("https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol=" +stockName+ "&interval=1min&apikey=VV6I5M93ATB8Z7JW", addStockCallback, context); //send the context further
 }
-function valuePerformance(){
-    alert("PERF GRAPHS");
-}
-function refreshStocks(){
-    alert("REFRESH");
-}
-function removeSelected(){
-    var table = this.parentNode.parentNode.childNodes[1].childNodes[0]; // get the table from the DOM tree
-    var checkBoxes = table.getElementsByTagName("input"); //get the checkbox list
-    var selectedBoxes = false;
-    var context = this;
-
-    for (var i = 0; i < checkBoxes.length; i++){ //loop through the table checkboxes to find which ones are selected
-        if (checkBoxes[i].checked == true){ //if a row is selected, delete row and decrease length by 1.
-            selectedBoxes = true;
-        }
-    }
-    if(selectedBoxes == false){
-        alert("You have not selected any stocks in this portfolio.");
-        return;
-    }
-    if(confirm("Are you sure you want to remove selected stocks?")){
-        for (var i = 0; i < checkBoxes.length; i++){ //loop through the table checkboxes to find which ones are selected
-
-            if (checkBoxes[i].checked == true){ //if a row is selected, delete row and decrease length by 1.
-                table.deleteRow(i+1);
-                i--;
-            }
-        }
-        updateTotalValue(context); //update the total value, send current context to function
-    }
-    else{
-        return;
-    }
-}
-function callback(data, context){
+function addStockCallback(data, context){
 
     //get stock value from API
     if(data["Error Message"] != null){ //if there is an error message, you have typed in an invalid stock symbol.
@@ -249,22 +214,27 @@ function callback(data, context){
     var table = middleDiv.childNodes[0]; //the table is the first child of the middle div
     var tableLength = table.rows.length;
 
+    if(tableLength > 50){ //if the user has more than 50 different stocks, the system will prompt with a message that tells you to delete stocks before adding more
+        alert("You have the maximum number of different stocks in this portfolio. Please remove a stock in order to make room for more stocks.");
+        return;
+    }
+
     //check if stockname already exists. If it does, we do not add a new row, but instead update the quantity and total value of the particular stock.
-    var headerCell = 0;
+    var stockNameCell = 0;
 
     for(var i = 1; i<tableLength; i++){
-        if(table.getElementsByTagName("td")[headerCell].innerText == stockName){ //if the stockname already exists, we just update the quantity and total value
-            var oldQuantity = parseInt(table.getElementsByTagName("td")[headerCell + 2].innerText);
+        if(table.getElementsByTagName("td")[stockNameCell].innerText == stockName){ //if the stockname already exists, we just update the quantity and total value
+            var oldQuantity = parseInt(table.getElementsByTagName("td")[stockNameCell + 2].innerText);
             var newQuantity = parseInt(quantity) + oldQuantity;
-            table.getElementsByTagName("td")[headerCell + 2].innerText = newQuantity; //update the quantity
+            table.getElementsByTagName("td")[stockNameCell + 2].innerText = newQuantity; //update the quantity
 
             var newTotalValue = Math.round(newQuantity * parseFloat(unitValue) * 100) / 100;
-            table.getElementsByTagName("td")[headerCell + 3].innerText = newTotalValue + " " + currency;
+            table.getElementsByTagName("td")[stockNameCell + 3].innerText = newTotalValue + " " + currency;
 
             updateTotalValue(context);
             return;
         }
-        headerCell = headerCell + 5;
+        stockNameCell += 5;
     }
 
     var tr = document.createElement("tr"); //create new row
@@ -307,6 +277,79 @@ function callback(data, context){
 
     updateTotalValue(context);
 }
+function valuePerformance(){
+    alert("PERF GRAPHS");
+}
+function refreshStocks(){ //refresh all the stock values, which means we have to make an API request for every stock in the portfolio.
+    var context = this;
+    var middleDiv = context.parentNode.parentNode.childNodes[1];
+    var table = middleDiv.childNodes[0];
+    var tableLength = table.rows.length;
+    var stockNameCell = 0;
+
+    for (var i = 1; i<tableLength; i++){ //for every stock, update the unit value and total value
+        var refreshStockName = table.getElementsByTagName("td")[stockNameCell].innerText;
+        getRequest("https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol=" + refreshStockName + "&interval=1min&apikey=VV6I5M93ATB8Z7JW", refreshCallback, context); //send the context further
+        stockNameCell += 5;
+    }
+}
+function refreshCallback(data, context){
+    //because the requests are asynchronous, we have to check which get request arrives first
+    var requestStockName = data["Meta Data"]["2. Symbol"];
+
+    var unitKeys = Object.keys(data["Time Series (1min)"]); //find the keys
+    var recentKey = unitKeys[0]; //the first key has the most recent stock close value.
+    var unitValue = data["Time Series (1min)"][recentKey]["4. close"]; //the newest unit value
+    unitValue = Math.round(parseFloat(unitValue) * 100) / 100;
+
+    var middleDiv = context.parentNode.parentNode.childNodes[1];
+    var table = middleDiv.childNodes[0];
+    var tableLength = table.rows.length;
+    var stockNameCell = 0;
+
+    //update the unit value and total value
+    for(var i = 1; i<tableLength; i++){
+        if(table.getElementsByTagName("td")[stockNameCell].innerText == requestStockName){ //check which row contains the correct stock
+
+            table.getElementsByTagName("td")[stockNameCell + 1].innerText = unitValue + " " + currency; //change the unit value
+            
+            var newQuantity = parseInt(table.getElementsByTagName("td")[stockNameCell + 2].innerText);
+
+            var newTotalValue = Math.round(newQuantity * parseFloat(unitValue) * 100) / 100;
+            table.getElementsByTagName("td")[stockNameCell + 3].innerText = newTotalValue + " " + currency;
+        }
+        stockNameCell = stockNameCell + 5;
+    }
+}
+function removeSelected(){
+    var table = this.parentNode.parentNode.childNodes[1].childNodes[0]; // get the table from the DOM tree
+    var checkBoxes = table.getElementsByTagName("input"); //get the checkbox list
+    var selectedBoxes = false;
+    var context = this;
+
+    for (var i = 0; i < checkBoxes.length; i++){ //loop through the table checkboxes to find which ones are selected
+        if (checkBoxes[i].checked == true){ //if a row is selected, delete row and decrease length by 1.
+            selectedBoxes = true;
+        }
+    }
+    if(selectedBoxes == false){
+        alert("You have not selected any stocks in this portfolio.");
+        return;
+    }
+    if(confirm("Are you sure you want to remove selected stocks?")){
+        for (var i = 0; i < checkBoxes.length; i++){ //loop through the table checkboxes to find which ones are selected
+
+            if (checkBoxes[i].checked == true){ //if a row is selected, delete row and decrease length by 1.
+                table.deleteRow(i+1);
+                i--;
+            }
+        }
+        updateTotalValue(context); //update the total value, send current context to function
+    }
+    else{
+        return;
+    }
+}
 function updateTotalValue(context){ //updating the total value of the portfolio.
     var totalValue = 0;
     var totalValueCell = 3;
@@ -317,16 +360,17 @@ function updateTotalValue(context){ //updating the total value of the portfolio.
 
 
     for(var i = 1; i<tableLength; i++){ //sum the total value
-        totalValue = totalValue + parseFloat(table.getElementsByTagName("td")[totalValueCell].innerText.split(" ")[0]);
-        totalValueCell = totalValueCell + 5;
+        totalValue = Math.round((totalValue + parseFloat(table.getElementsByTagName("td")[totalValueCell].innerText.split(" ")[0])) * 100 ) / 100; //we add the new value, round to 2 decimals
+        totalValueCell += 5;
     }
 
     //update the total value text
+
     var totalValueDiv = context.parentNode.parentNode.childNodes[2];
-    totalValueDiv.removeChild(totalValueDiv.childNodes[0]);
+    totalValueDiv.removeChild(totalValueDiv.childNodes[0]); //remove the old value
 
     var portfolioName = context.parentNode.parentNode.childNodes[0].childNodes[0].innerHTML;
 
-    var totalValueText = document.createTextNode("Total value of "+ portfolioName+": "+ totalValue + " "+currency);
+    var totalValueText = document.createTextNode("Total value of "+ portfolioName +": "+ totalValue + " "+currency);
     totalValueDiv.appendChild(totalValueText);
 }

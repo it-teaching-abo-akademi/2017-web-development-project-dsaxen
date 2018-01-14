@@ -1,5 +1,3 @@
-var stockname;
-var quantity;
 var currency = "$";
 
 window.onload=function(){ //this function is executed after DOM has fully loaded
@@ -26,15 +24,25 @@ function getRequest(url, callback, context){
 
 function addPortfolio(){
     var totalValue = 0;
+    var portfoliosAmount = document.getElementById("portfolios").children.length;
     var portfolioName = prompt("Please enter the portfolio name:");
 
     if (portfolioName == null || portfolioName == ""){
         return;
     }
-    if (document.getElementById("portfolios").children.length > 9){ //if the number of portfolios exceed 10, prompt with a message..
+    if (portfoliosAmount > 9){ //if the number of portfolios exceed 10, prompt with a message..
         alert("You can have at most 10 portfolios. Please remove an existing portfolio before trying to create a new one.")
         return;
     }
+
+    for(var i = 0; i<portfoliosAmount; i++){ //check for duplicate names
+        if(portfolioName == document.getElementById("portfolios").childNodes[i+1].childNodes[0].childNodes[0].innerHTML){ //do not allow same name to occur twice
+            alert("A portfolio with that name already exists. Please choose another name.")
+            addPortfolio();
+            return;
+        }
+    }
+
 
     var parentDiv = document.getElementById("portfolios");
     var portfolioDiv = document.createElement("div"); //create portfolio div
@@ -175,7 +183,7 @@ function addStock(){
 
     var self = this; //store the context to a variable
 
-    stockName = prompt("Please enter the stock name:");
+    stockName = prompt("Please enter the stock symbol:");
 
     if (stockName == null || stockName == ""){
         return;
@@ -226,7 +234,10 @@ function removeSelected(){
 function callback(data, context){
 
     //get stock value from API
-
+    if(data["Error Message"] != null){ //if there is an error message, you have typed in an invalid stock symbol.
+        alert("You typed a stock symbol that does not exist. Please try again.");
+        return;
+    }
     var unitKeys = Object.keys(data["Time Series (1min)"]); //find the keys
     var recentKey = unitKeys[0]; //the first key has the most recent stock close value.
     var unitValue = data["Time Series (1min)"][recentKey]["4. close"];
@@ -236,6 +247,25 @@ function callback(data, context){
 
     var middleDiv = context.parentNode.parentNode.childNodes[1]; //get the div relative to the add stock button, whose context we stored in the context variable
     var table = middleDiv.childNodes[0]; //the table is the first child of the middle div
+    var tableLength = table.rows.length;
+
+    //check if stockname already exists. If it does, we do not add a new row, but instead update the quantity and total value of the particular stock.
+    var headerCell = 0;
+
+    for(var i = 1; i<tableLength; i++){
+        if(table.getElementsByTagName("td")[headerCell].innerText == stockName){ //if the stockname already exists, we just update the quantity and total value
+            var oldQuantity = parseInt(table.getElementsByTagName("td")[headerCell + 2].innerText);
+            var newQuantity = parseInt(quantity) + oldQuantity;
+            table.getElementsByTagName("td")[headerCell + 2].innerText = newQuantity; //update the quantity
+
+            var newTotalValue = Math.round(newQuantity * parseFloat(unitValue) * 100) / 100;
+            table.getElementsByTagName("td")[headerCell + 3].innerText = newTotalValue + " " + currency;
+
+            updateTotalValue(context);
+            return;
+        }
+        headerCell = headerCell + 5;
+    }
 
     var tr = document.createElement("tr"); //create new row
 
@@ -284,9 +314,10 @@ function updateTotalValue(context){ //updating the total value of the portfolio.
     var table = middleDiv.childNodes[0];
     var tableLength = table.rows.length;
 
-    //check if stockname already exists TODO
-    for(var i = 1; i<tableLength; i++){
-        totalValue = totalValue + parseFloat(table.getElementsByTagName("td")[totalValueCell].innerText.split(" ")[0])
+
+
+    for(var i = 1; i<tableLength; i++){ //sum the total value
+        totalValue = totalValue + parseFloat(table.getElementsByTagName("td")[totalValueCell].innerText.split(" ")[0]);
         totalValueCell = totalValueCell + 5;
     }
 
@@ -296,6 +327,6 @@ function updateTotalValue(context){ //updating the total value of the portfolio.
 
     var portfolioName = context.parentNode.parentNode.childNodes[0].childNodes[0].innerHTML;
 
-    var totalValueText = document.createTextNode("Total value of "+ portfolioName+": "+totalValue + " "+currency);
+    var totalValueText = document.createTextNode("Total value of "+ portfolioName+": "+ totalValue + " "+currency);
     totalValueDiv.appendChild(totalValueText);
 }

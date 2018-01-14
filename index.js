@@ -1,4 +1,4 @@
-var currency = "$";
+var usdToEurRate;
 
 window.onload=function(){ //this function is executed after DOM has fully loaded
     
@@ -10,12 +10,12 @@ window.onload=function(){ //this function is executed after DOM has fully loaded
 }
 
 // A SIMPLE GET REQUEST FUNCTION
-function getRequest(url, addStockCallback, context){
+function getRequest(url, callback, context){
     var xmlHttp = new XMLHttpRequest();
     xmlHttp.onreadystatechange = function(){ //called when the server responds with data
         if(this.readyState == 4 && this.status == 200){
             var getData = JSON.parse(xmlHttp.responseText);
-            addStockCallback(getData, context); //pass the list and context to addStockCallback function
+            callback(getData, context); //pass the list and context to addStockCallback function
         }
     }
     xmlHttp.open("GET", url, true);
@@ -100,6 +100,8 @@ function addPortfolio(){
     
     tbl.appendChild(tr); //append row to table
     middleDiv.appendChild(tbl); //append table to middle div
+
+    var currency = "$";
     
     var totalValueText = document.createTextNode("Total value of "+ portfolioName+": "+totalValue + " "+currency);
     totalValueDiv.appendChild(totalValueText);
@@ -113,6 +115,7 @@ function addPortfolio(){
     var showDollarsButton = document.createElement("button");
     showDollarsButton.className = "currencyButton";
     showDollarsButton.innerHTML = "Show in $";
+    showDollarsButton.disabled = true; //we begin initially with dollars.
 
     var removePortfolioButton = document.createElement("button");
     removePortfolioButton.id = "removePortfolioButton";
@@ -163,10 +166,101 @@ function addPortfolio(){
 }
 
 function showEuros(){
+    var context = this;
+    var topDiv = context.parentNode.parentNode.childNodes[0]; 
+    var showEurosButton = topDiv.childNodes[1];
+    var showDollarsButton = topDiv.childNodes[2];
 
+    if (showEurosButton.disabled != true){ //if our current currency is dollars, we can change the currency.
+
+        //API request current currency exchange rate, from dollars to euros. We need to change every single stock unit value in the portfolio.
+
+        getRequest("https://www.alphavantage.co/query?function=CURRENCY_EXCHANGE_RATE&from_currency=USD&to_currency=EUR&apikey=VV6I5M93ATB8Z7JW", showEurosCallback, context);
+    }
+    else{
+        alert("You are already displaying the portfolio in €.");
+    }
+}
+function showEurosCallback(data, context){
+    var topDiv = context.parentNode.parentNode.childNodes[0]; 
+    var showEurosButton = topDiv.childNodes[1];
+    var showDollarsButton = topDiv.childNodes[2];
+    usdToEurRate = data["Realtime Currency Exchange Rate"]["5. Exchange Rate"]; //get the rate
+    usdToEurRate = parseFloat(usdToEurRate); //convert to float value
+
+    //If the table has any stocks, we need to traverse through them and change the unit value and total value.
+
+    var middleDiv = context.parentNode.parentNode.childNodes[1]; //get the div relative to the show in € button, whose context we stored in the context variable
+    var table = middleDiv.childNodes[0]; //the table is the first child of the middle div
+    var tableLength = table.rows.length;
+
+    var stockNameCell = 0;
+
+    for(var i = 1; i<tableLength; i++){ //traverse through the rows in the table
+
+        var dollarValue = parseFloat(table.getElementsByTagName("td")[stockNameCell + 1].innerText.split(" ")[0]); //get the unit value
+
+        var euroValue = Math.round(dollarValue * usdToEurRate * 100) / 100; //currency conversion, two decimals
+        table.getElementsByTagName("td")[stockNameCell + 1].innerText = euroValue + " €";
+
+        var newTotalValue = Math.round((euroValue * parseInt(table.getElementsByTagName("td")[stockNameCell + 2].innerText)) * 100) / 100; 
+        table.getElementsByTagName("td")[stockNameCell + 3].innerText = newTotalValue + " €";
+        stockNameCell = stockNameCell + 5;
+    }
+
+    showEurosButton.disabled = true; //update buttons
+    showDollarsButton.disabled = false;
+
+    updateTotalValue(context); //after updating the tables, we need to update the total value.
 }
 function showDollars(){
+    var context = this;
+    var topDiv = context.parentNode.parentNode.childNodes[0]; 
+    var showEurosButton = topDiv.childNodes[1];
+    var showDollarsButton = topDiv.childNodes[2];
 
+    if (showDollarsButton.disabled != true){ //if our current currency is euros, we can change the currency.
+
+        //API request current currency exchange rate, from euros to dollars. We need to change every single stock unit value in the portfolio.
+
+        getRequest("https://www.alphavantage.co/query?function=CURRENCY_EXCHANGE_RATE&from_currency=EUR&to_currency=USD&apikey=VV6I5M93ATB8Z7JW", showDollarsCallback, context);
+    }
+    else{
+        alert("You are already displaying the portfolio in $.");
+    }
+}
+function showDollarsCallback(data, context){
+
+    var topDiv = context.parentNode.parentNode.childNodes[0]; 
+    var showEurosButton = topDiv.childNodes[1];
+    var showDollarsButton = topDiv.childNodes[2];
+    var rate = data["Realtime Currency Exchange Rate"]["5. Exchange Rate"]; //get the rate
+    rate = parseFloat(rate); //convert to float value
+
+    //If the table has any stocks, we need to traverse through them and change the unit value and total value.
+
+    var middleDiv = context.parentNode.parentNode.childNodes[1]; //get the div relative to the show in € button, whose context we stored in the context variable
+    var table = middleDiv.childNodes[0]; //the table is the first child of the middle div
+    var tableLength = table.rows.length;
+
+    var stockNameCell = 0;
+
+    for(var i = 1; i<tableLength; i++){ //traverse through the rows in the table
+
+        var euroValue = parseFloat(table.getElementsByTagName("td")[stockNameCell + 1].innerText.split(" ")[0]); //get the unit value
+
+        var dollarValue = Math.round(euroValue * rate * 100) / 100; //currency conversion, two decimals
+        table.getElementsByTagName("td")[stockNameCell + 1].innerText = dollarValue + " $";
+
+        var newTotalValue = Math.round((dollarValue * parseInt(table.getElementsByTagName("td")[stockNameCell + 2].innerText)) * 100) / 100; 
+        table.getElementsByTagName("td")[stockNameCell + 3].innerText = newTotalValue + " $";
+        stockNameCell = stockNameCell + 5;
+    }
+
+    showDollarsButton.disabled = true; //update buttons
+    showEurosButton.disabled = false;
+
+    updateTotalValue(context); //after updating the tables, we need to update the total value.
 }
 
 function removePortfolio(){
@@ -194,9 +288,23 @@ function addStock(){
     if (quantity == null || quantity == "" || quantity != parseInt(quantity, 10)){
         return;
     }
-    getRequest("https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol=" +stockName+ "&interval=1min&apikey=VV6I5M93ATB8Z7JW", addStockCallback, context); //send the context further
+    getRequest("https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol=" + stockName + "&interval=1min&apikey=VV6I5M93ATB8Z7JW", addStockCallback, context); //send the context further
 }
 function addStockCallback(data, context){
+
+    //set the correct currency
+
+    var topDiv = context.parentNode.parentNode.childNodes[0]; 
+    var showEurosButton = topDiv.childNodes[1];
+    var showDollarsButton = topDiv.childNodes[2];
+    var currency;
+
+    if(showEurosButton.disabled == true){ //if the eurobutton is disabled, it means that the current currency is euros
+        currency = "€";
+    }
+    else{
+        currency = "$";
+    }
 
     //get stock value from API
     if(data["Error Message"] != null){ //if there is an error message, you have typed in an invalid stock symbol.
@@ -207,6 +315,12 @@ function addStockCallback(data, context){
     var recentKey = unitKeys[0]; //the first key has the most recent stock close value.
     var unitValue = data["Time Series (1min)"][recentKey]["4. close"];
     unitValue = Math.round(unitValue*100)/100; //rounds to two decimals
+
+    //the get request returns values in dollars. If euro is chosen before adding a stock, we need to manipulate the unit value.
+
+    if(showEurosButton.disabled == true){ // in this case, euros are chosen. We use the latest rate which we got when we clicked on the "show in €" or "Refresh exchange rate" button. button.
+        unitValue = Math.round(unitValue * parseFloat(usdToEurRate) * 100) / 100;
+    }
 
     //get portfolio table and create new rows based on the stock data
 
@@ -292,15 +406,36 @@ function refreshStocks(){ //refresh all the stock values, which means we have to
         getRequest("https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol=" + refreshStockName + "&interval=1min&apikey=VV6I5M93ATB8Z7JW", refreshCallback, context); //send the context further
         stockNameCell += 5;
     }
+
 }
 function refreshCallback(data, context){
-    //because the requests are asynchronous, we have to check which get request arrives first
+
+    //set the correct currency
+
+    var topDiv = context.parentNode.parentNode.childNodes[0]; 
+    var showEurosButton = topDiv.childNodes[1];
+    var showDollarsButton = topDiv.childNodes[2];
+    var currency;
+    
+    if(showEurosButton.disabled == true){ //if the eurobutton is disabled, it means that the current currency is euros
+        currency = "€";
+    }
+    else{
+        currency = "$";
+    }
+
     var requestStockName = data["Meta Data"]["2. Symbol"];
 
     var unitKeys = Object.keys(data["Time Series (1min)"]); //find the keys
     var recentKey = unitKeys[0]; //the first key has the most recent stock close value.
     var unitValue = data["Time Series (1min)"][recentKey]["4. close"]; //the newest unit value
     unitValue = Math.round(parseFloat(unitValue) * 100) / 100;
+
+
+
+    if(showEurosButton.disabled == true){ // in this case, euros are chosen. We use the latest rate which we got when we clicked on the "show in €" or "Refresh exchange rate" button.
+        unitValue = Math.round(unitValue * parseFloat(usdToEurRate) * 100) / 100;
+    }
 
     var middleDiv = context.parentNode.parentNode.childNodes[1];
     var table = middleDiv.childNodes[0];
@@ -320,6 +455,7 @@ function refreshCallback(data, context){
         }
         stockNameCell = stockNameCell + 5;
     }
+    updateTotalValue(context); //update the total value
 }
 function removeSelected(){
     var table = this.parentNode.parentNode.childNodes[1].childNodes[0]; // get the table from the DOM tree
@@ -351,13 +487,26 @@ function removeSelected(){
     }
 }
 function updateTotalValue(context){ //updating the total value of the portfolio.
+
+    //set the correct currency 
+    var topDiv = context.parentNode.parentNode.childNodes[0]; 
+    var showEurosButton = topDiv.childNodes[1];
+    var showDollarsButton = topDiv.childNodes[2];
+    
+    var currency;
+    
+    if(showEurosButton.disabled == true){ //if the eurobutton is disabled, it means that the current currency is euros
+        currency = "€";
+    }
+    else{
+        currency = "$";
+    }
+
     var totalValue = 0;
     var totalValueCell = 3;
     var middleDiv = context.parentNode.parentNode.childNodes[1]; 
     var table = middleDiv.childNodes[0];
     var tableLength = table.rows.length;
-
-
 
     for(var i = 1; i<tableLength; i++){ //sum the total value
         totalValue = Math.round((totalValue + parseFloat(table.getElementsByTagName("td")[totalValueCell].innerText.split(" ")[0])) * 100 ) / 100; //we add the new value, round to 2 decimals

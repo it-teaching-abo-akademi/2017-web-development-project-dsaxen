@@ -1,10 +1,14 @@
 var usdToEurRate;
+var historicalDataList = [];
+var getRequests;
 
 window.onload=function(){ //this function is executed after DOM has fully loaded
     
         //button onclick
         document.getElementById("addPortfolioButton").onclick = addPortfolio;
 
+        //overlay onclick hides overlay
+        document.getElementById("overlay").onclick = hideOverlay;
         //load local storage
 
 }
@@ -21,13 +25,30 @@ function getRequest(url, callback, context){
     xmlHttp.open("GET", url, true);
     xmlHttp.send();
 }
+function hideOverlay(){ //hide overlays and remove the old canvas
 
+    var performanceDiv = document.getElementById("performanceDiv");
+    document.getElementById("overlay").style.display = "none"; //hide overlays
+    performanceDiv.style.display = "none";
+
+    while(performanceDiv.firstChild){ //remove the canvas
+        performanceDiv.removeChild(performanceDiv.firstChild);
+    }
+
+    historicalDataList.length = 0; //empty the historical data list
+    
+}
 function addPortfolio(){
     var totalValue = 0;
     var portfoliosAmount = document.getElementById("portfolios").children.length;
     var portfolioName = prompt("Please enter the portfolio name:");
 
     if (portfolioName == null || portfolioName == ""){
+        return;
+    }
+    if(portfolioName.length > 15){
+        alert("The portfolio name is limited to 15 characters. Please choose a shorter name.");
+        addPortfolio();
         return;
     }
     if (portfoliosAmount > 9){ //if the number of portfolios exceed 10, prompt with a message..
@@ -44,9 +65,9 @@ function addPortfolio(){
     }
 
 
-    var parentDiv = document.getElementById("portfolios");
+    var portfolioList = document.getElementById("portfolios");
     var portfolioDiv = document.createElement("div"); //create portfolio div
-    portfolioDiv.style.cssText = "width: 60vh; height: 40vh; border: 2px solid black; position: relative; float: left; margin-top: 15px; margin-left: 15px;";
+    portfolioDiv.style.cssText = "width: 70vh; height: 40vh; border: 2px solid black; position: relative; float: left; margin-top: 15px; margin-left: 15px;";
 
     topDiv = document.createElement("div");
     topDiv.style.cssText = "position: relative; top: 0; width: 100%; margin-top: 5px; margin-left: 5px; font-size: 18px;";
@@ -161,7 +182,7 @@ function addPortfolio(){
     refreshButton.addEventListener("click", refreshStocks);
     removeSelectedButton.addEventListener("click", removeSelected);
 
-    parentDiv.appendChild(portfolioDiv); //append portfolio to the list of portfolios
+    portfolioList.appendChild(portfolioDiv); //append portfolio to the list of portfolios
 
 }
 
@@ -265,8 +286,8 @@ function showDollarsCallback(data, context){
 
 function removePortfolio(){
     if(confirm("Are you sure you want to remove this portfolio?")){
-        var parentDiv = this.parentNode.parentNode;
-        parentDiv.parentNode.removeChild(parentDiv); //remove the parent div (the whole portfolio)
+        var portfolioDiv = this.parentNode.parentNode;
+        portfolioDiv.parentNode.removeChild(portfolioDiv); //remove the parent div (the whole portfolio)
     }
     else{
         return;
@@ -299,7 +320,7 @@ function addStockCallback(data, context){
     var showDollarsButton = topDiv.childNodes[2];
     var currency;
 
-    if(showEurosButton.disabled == true){ //if the eurobutton is disabled, it means that the current currency is euros
+    if(showEurosButton.disabled){ //if the eurobutton is disabled, it means that the current currency is euros
         currency = "€";
     }
     else{
@@ -318,7 +339,7 @@ function addStockCallback(data, context){
 
     //the get request returns values in dollars. If euro is chosen before adding a stock, we need to manipulate the unit value.
 
-    if(showEurosButton.disabled == true){ // in this case, euros are chosen. We use the latest rate which we got when we clicked on the "show in €" or "Refresh exchange rate" button. button.
+    if(showEurosButton.disabled){ // in this case, euros are chosen. We use the latest rate which we got when we clicked on the "show in €" or "Refresh exchange rate" button. button.
         unitValue = Math.round(unitValue * parseFloat(usdToEurRate) * 100) / 100;
     }
 
@@ -359,9 +380,7 @@ function addStockCallback(data, context){
     var totalValueCell = document.createElement("td");
     var selectCell = document.createElement("td");
 
-
-    //input API values! Default currency: $
-
+    //input API values, Default currency: $
 
     var text = document.createTextNode(stockName);
     var text2 = document.createTextNode(unitValue + " " +currency);
@@ -391,14 +410,167 @@ function addStockCallback(data, context){
 
     updateTotalValue(context);
 }
-function valuePerformance(){
-    alert("PERF GRAPHS");
+function valuePerformance(){ //API request for every stock with historical data (up to 20 years)
+    var context = this;
+
+    var table = this.parentNode.parentNode.childNodes[1].childNodes[0];
+    var tableLength = table.rows.length;
+
+    if(tableLength == 1){
+        alert("You do not have any stocks to graph. Please add a stock.");
+        return;
+    }
+    var stockNameCell = 0;
+    getRequests = tableLength - 1;
+
+    for (var i = 1; i < tableLength; i++){ //loop through every stock in the table, 
+        var stockName = table.getElementsByTagName("td")[stockNameCell].innerText;
+        getRequest("https://www.alphavantage.co/query?function=TIME_SERIES_DAILY_ADJUSTED&symbol=" + stockName + "&outputsize=full&apikey=VV6I5M93ATB8Z7JW", gatherHistoricalData, context)
+        stockNameCell += 5;
+    }
+}
+function gatherHistoricalData(data, context){
+    getRequests--;
+    var unitKeys = Object.keys(data["Time Series (Daily)"]); //the keys are the dates
+    var stockName = data["Meta Data"]["2. Symbol"];
+    historicalDataList.push(stockName);
+
+    for (var i = 0; i<unitKeys.length; i++){
+        var unitValue = data["Time Series (Daily)"][unitKeys[i]]["5. adjusted close"]; //use the adjusted close
+        var dateValuePair = {date: unitKeys[i], value: unitValue};
+        historicalDataList.push(dateValuePair);
+    }
+    console.log(getRequests);
+    if(getRequests == 0){ //when we have finished all our requests..
+        drawGraph(context); //..we execute the drawGraph
+    }
+}
+function drawGraph(context){
+
+
+    console.log(historicalDataList);
+
+    var portfolioName = context.parentNode.parentNode.childNodes[0].childNodes[0].innerHTML;
+    
+    //draw the graph based on the stocks
+    var performanceDiv = document.getElementById("performanceDiv");
+    document.getElementById("overlay").style.display = "block"; //make the overlay and canvas visible
+    performanceDiv.style.display = "block";
+
+    var dateDiv = document.createElement("div");
+
+    var canvas = document.createElement("canvas"); //create the canvas
+    canvas.id = "graphCanvas";
+
+
+    var today = new Date(); //max date is today
+    var day = today.getDate();
+    var month = today.getMonth() + 1; 
+    var year = today.getFullYear();
+
+    if(day < 10){
+        day = '0' + day;
+    }
+    if (month < 10){
+        month = '0' + month;
+    }
+    today = year + "-" + month + "-" + day;
+
+    var startDate = document.createElement("input"); //create start and end date inputs
+    startDate.setAttribute("type", "date");
+    startDate.setAttribute("min", "2000-01-03"); //the alphavantage API limits the data to this date
+    startDate.id = "startDate";
+
+    var endDate = document.createElement("input");
+    endDate.setAttribute("type", "date");
+    endDate.setAttribute("value", today);
+    endDate.setAttribute("max", today); //maximum value is today's date
+    endDate.id = "endDate";
+
+    var adjustButton = document.createElement("button");
+    adjustButton.id= "adjustButton";
+    adjustButton.innerHTML = "Adjust time window";
+
+
+    dateDiv.appendChild(startDate);
+    dateDiv.appendChild(endDate);
+    dateDiv.appendChild(adjustButton);
+    
+    performanceDiv.appendChild(canvas); //append canvas and inputs
+    performanceDiv.appendChild(dateDiv);
+
+
+    var myChart = new Chart(canvas, { //draw chart
+        type: 'line',
+        data: {
+            labels: ["January", "February", "March", "April", "May", "June", "July"],
+            datasets: [{
+                label: "MSFT",
+                backgroundColor: 'rgb(220,20,60)',
+                borderColor: 'rgb(220,20,60)',
+                data: [
+                    1,2,3,4,5,85,2
+                ],
+                fill: false,
+            }, {
+                label: "AAPL",
+                backgroundColor: 'rgb(0,191,255)',
+                borderColor: 'rgb(0,191,255)',
+                data: [
+                    23,35,87,21,2,1,5
+                ],
+                fill: false,
+            }]
+        },
+        options: {
+            responsive: true,
+            title:{
+                display:true,
+                text:'Historic valuation of the stocks in ' + portfolioName,
+            },
+            tooltips: {
+                mode: 'index',
+                intersect: false,
+            },
+            hover: {
+                mode: 'nearest',
+                intersect: true
+            },
+            scales: {
+                xAxes: [{
+                    display: true,
+                    scaleLabel: {
+                        display: true,
+                        labelString: 'Date'
+                    }
+                }],
+                yAxes: [{
+                    display: true,
+                    scaleLabel: {
+                        display: true,
+                        labelString: 'Stock value'
+                    }
+                }]
+            }
+        }
+    });
+    //adjustButton.addEventListener("click", updateChart); //we add the event listener to the button
+}
+
+function updateChart(){ //if the user chooses to update the chart, we adjust the time window according to the choices the user made.
+    alert("hi");
 }
 function refreshStocks(){ //refresh all the stock values, which means we have to make an API request for every stock in the portfolio.
     var context = this;
     var middleDiv = context.parentNode.parentNode.childNodes[1];
     var table = middleDiv.childNodes[0];
     var tableLength = table.rows.length;
+
+    if(tableLength == 1){
+        alert("You do not have any stocks to refresh. Please add a stock.");
+        return;
+    }
+
     var stockNameCell = 0;
 
     for (var i = 1; i<tableLength; i++){ //for every stock, update the unit value and total value
@@ -409,7 +581,6 @@ function refreshStocks(){ //refresh all the stock values, which means we have to
 
 }
 function refreshCallback(data, context){
-
     //set the correct currency
 
     var topDiv = context.parentNode.parentNode.childNodes[0]; 
@@ -417,7 +588,7 @@ function refreshCallback(data, context){
     var showDollarsButton = topDiv.childNodes[2];
     var currency;
     
-    if(showEurosButton.disabled == true){ //if the eurobutton is disabled, it means that the current currency is euros
+    if(showEurosButton.disabled){ //if the eurobutton is disabled, it means that the current currency is euros
         currency = "€";
     }
     else{
@@ -433,7 +604,7 @@ function refreshCallback(data, context){
 
 
 
-    if(showEurosButton.disabled == true){ // in this case, euros are chosen. We use the latest rate which we got when we clicked on the "show in €" or "Refresh exchange rate" button.
+    if(showEurosButton.disabled){ // in this case, euros are chosen. We use the latest rate which we got when we clicked on the "show in €" or "Refresh exchange rate" button.
         unitValue = Math.round(unitValue * parseFloat(usdToEurRate) * 100) / 100;
     }
 
@@ -453,7 +624,7 @@ function refreshCallback(data, context){
             var newTotalValue = Math.round(newQuantity * parseFloat(unitValue) * 100) / 100;
             table.getElementsByTagName("td")[stockNameCell + 3].innerText = newTotalValue + " " + currency;
         }
-        stockNameCell = stockNameCell + 5;
+        stockNameCell += 5;
     }
     updateTotalValue(context); //update the total value
 }
@@ -464,7 +635,7 @@ function removeSelected(){
     var context = this;
 
     for (var i = 0; i < checkBoxes.length; i++){ //loop through the table checkboxes to find which ones are selected
-        if (checkBoxes[i].checked == true){ //if a row is selected, delete row and decrease length by 1.
+        if (checkBoxes[i].checked){ 
             selectedBoxes = true;
         }
     }
@@ -475,7 +646,7 @@ function removeSelected(){
     if(confirm("Are you sure you want to remove selected stocks?")){
         for (var i = 0; i < checkBoxes.length; i++){ //loop through the table checkboxes to find which ones are selected
 
-            if (checkBoxes[i].checked == true){ //if a row is selected, delete row and decrease length by 1.
+            if (checkBoxes[i].checked){ //if a row is selected, delete row and decrease length by 1.
                 table.deleteRow(i+1);
                 i--;
             }
@@ -486,6 +657,7 @@ function removeSelected(){
         return;
     }
 }
+
 function updateTotalValue(context){ //updating the total value of the portfolio.
 
     //set the correct currency 
@@ -495,7 +667,7 @@ function updateTotalValue(context){ //updating the total value of the portfolio.
     
     var currency;
     
-    if(showEurosButton.disabled == true){ //if the eurobutton is disabled, it means that the current currency is euros
+    if(showEurosButton.disabled){ //if the eurobutton is disabled, it means that the current currency is euros
         currency = "€";
     }
     else{

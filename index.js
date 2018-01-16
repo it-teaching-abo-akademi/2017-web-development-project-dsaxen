@@ -432,15 +432,16 @@ function valuePerformance(){ //API request for every stock with historical data 
 function gatherHistoricalData(data, context){
     getRequests--;
     var unitKeys = Object.keys(data["Time Series (Daily)"]); //the keys are the dates
-    var stockName = data["Meta Data"]["2. Symbol"];
-    historicalDataList.push(stockName);
 
     for (var i = 0; i<unitKeys.length; i++){
         var unitValue = data["Time Series (Daily)"][unitKeys[i]]["5. adjusted close"]; //use the adjusted close
-        var dateValuePair = {date: unitKeys[i], value: unitValue};
+        var dateValuePair = {"date": unitKeys[i], "value": unitValue};
         historicalDataList.push(dateValuePair);
     }
-    console.log(getRequests);
+    historicalDataList.reverse(); //reverse list because the API provides newest value first
+
+    var stockName = data["Meta Data"]["2. Symbol"];
+    historicalDataList.push(stockName);
     if(getRequests == 0){ //when we have finished all our requests..
         drawGraph(context); //..we execute the drawGraph
     }
@@ -448,7 +449,18 @@ function gatherHistoricalData(data, context){
 function drawGraph(context){
 
 
-    console.log(historicalDataList);
+    //TODO: fix the for loop to take every element and fix so that it can draw graphs for multiple stocks..
+    var dateList = [];
+    var valueList = [];
+    
+    for(var i = 1; i<4000; i++){
+        for(var key in historicalDataList[i]){
+            var date = historicalDataList[i]["date"];
+            var value = historicalDataList[i]["value"];
+            dateList.push(date);
+            valueList.push(value);
+        }
+    }
 
     var portfolioName = context.parentNode.parentNode.childNodes[0].childNodes[0].innerHTML;
     
@@ -503,14 +515,13 @@ function drawGraph(context){
     var myChart = new Chart(canvas, { //draw chart
         type: 'line',
         data: {
-            labels: ["January", "February", "March", "April", "May", "June", "July"],
+            labels: dateList,
             datasets: [{
                 label: "MSFT",
+                radius: 0, // radius is 0 for only this dataset
                 backgroundColor: 'rgb(220,20,60)',
                 borderColor: 'rgb(220,20,60)',
-                data: [
-                    1,2,3,4,5,85,2
-                ],
+                data: valueList,
                 fill: false,
             }, {
                 label: "AAPL",

@@ -493,8 +493,6 @@ function drawGraph(context){
         dateList.push(date);
         valueList.push(value);
     }
-    console.log(stockNameList);
-	
 	
     //use jquery to remove duplicates in the dateList. 
     var uniqueDates = [];
@@ -505,10 +503,11 @@ function drawGraph(context){
     });
 
     var dataSet = []; //we need to compose our dataset before we send it to the chart constructor.
-	var colors = ["red", "blue", "green", "black", "yellow", "purple"];
+    var colors = ["red", "blue", "green", "black", "yellow", "purple"];
     for (var i = 0; i<stockNameList.length; i++){ //for every stock, construct a data array
 		if(stockNameList.length == i + 1){
 			var stockValues = valueList.splice(stockNameList[i]["startIndex"],valueList.length-1);
+			console.log(stockValues);
 		}
 		else{
 			var stockValues = valueList.splice(stockNameList[i]["startIndex"],stockNameList[i+1]["startIndex"]);		

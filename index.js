@@ -507,7 +507,6 @@ function drawGraph(context){
     var dataSet = []; //we need to compose our dataset before we send it to the chart constructor.
 	var colors = ["red", "blue", "green", "black", "yellow", "purple"];
     for (var i = 0; i<stockNameList.length; i++){ //for every stock, construct a data array
-		console.log(i);
 		if(stockNameList.length == i + 1){
 			var stockValues = valueList.splice(stockNameList[i]["startIndex"],valueList.length-1);
 		}

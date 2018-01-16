@@ -324,7 +324,6 @@ function addStock(){
 
     loader = document.getElementById("loader"); //initiate loading sign and overlay
     loaderOverlay = document.getElementById("loaderOverlay");
-
     loader.style.display = "block";
     loaderOverlay.style.display = "block";
 
@@ -476,8 +475,6 @@ function drawGraph(context){
     loader.style.display = "none"; //hide the loading spinner and overlay
     loaderOverlay.style.display = "none";
 
-
-    //TODO: Separate valueList by e.g. a "-", use the splitting to create the dataset for different stocks
     var dateList = [];
     var valueList = [];
     var stockNameList = [];
@@ -491,13 +488,12 @@ function drawGraph(context){
                 continue; //we end the current iteration because we received a new stock value
             }
         }
-		
         var date = historicalDataList[i]["date"];
         var value = historicalDataList[i]["value"];
         dateList.push(date);
         valueList.push(value);
     }
-	
+    console.log(stockNameList);
 	
 	
     //use jquery to remove duplicates in the dateList. 
@@ -513,9 +509,7 @@ function drawGraph(context){
     for (var i = 0; i<stockNameList.length; i++){ //for every stock, construct a data array
 		console.log(i);
 		if(stockNameList.length == i + 1){
-			console.log(stockNameList[i]["startIndex"]);
 			var stockValues = valueList.splice(stockNameList[i]["startIndex"],valueList.length-1);
-			console.log(stockValues);
 		}
 		else{
 			var stockValues = valueList.splice(stockNameList[i]["startIndex"],stockNameList[i+1]["startIndex"]);		

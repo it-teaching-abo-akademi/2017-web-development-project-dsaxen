@@ -187,6 +187,12 @@ function addPortfolio(){
 }
 
 function showEuros(){
+    loader = document.getElementById("loader"); //initiate loading sign and overlay
+    loaderOverlay = document.getElementById("loaderOverlay");
+
+    loader.style.display = "block";
+    loaderOverlay.style.display = "block";
+
     var context = this;
     var topDiv = context.parentNode.parentNode.childNodes[0]; 
     var showEurosButton = topDiv.childNodes[1];
@@ -235,6 +241,12 @@ function showEurosCallback(data, context){
     updateTotalValue(context); //after updating the tables, we need to update the total value.
 }
 function showDollars(){
+    loader = document.getElementById("loader"); //initiate loading sign and overlay
+    loaderOverlay = document.getElementById("loaderOverlay");
+
+    loader.style.display = "block";
+    loaderOverlay.style.display = "block";
+
     var context = this;
     var topDiv = context.parentNode.parentNode.childNodes[0]; 
     var showEurosButton = topDiv.childNodes[1];
@@ -309,6 +321,13 @@ function addStock(){
     if (quantity == null || quantity == "" || quantity != parseInt(quantity, 10)){
         return;
     }
+
+    loader = document.getElementById("loader"); //initiate loading sign and overlay
+    loaderOverlay = document.getElementById("loaderOverlay");
+
+    loader.style.display = "block";
+    loaderOverlay.style.display = "block";
+
     getRequest("https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol=" + stockName + "&interval=1min&apikey=VV6I5M93ATB8Z7JW", addStockCallback, context); //send the context further
 }
 function addStockCallback(data, context){
@@ -411,6 +430,13 @@ function addStockCallback(data, context){
     updateTotalValue(context);
 }
 function valuePerformance(){ //API request for every stock with historical data (up to 20 years)
+
+    loader = document.getElementById("loader"); //initiate loading sign and overlay
+    loaderOverlay = document.getElementById("loaderOverlay");
+
+    loader.style.display = "block";
+    loaderOverlay.style.display = "block";
+
     var context = this;
 
     var table = this.parentNode.parentNode.childNodes[1].childNodes[0];
@@ -438,28 +464,49 @@ function gatherHistoricalData(data, context){
         var dateValuePair = {"date": unitKeys[i], "value": unitValue};
         historicalDataList.push(dateValuePair);
     }
-    historicalDataList.reverse(); //reverse list because the API provides newest value first
 
     var stockName = data["Meta Data"]["2. Symbol"];
-    historicalDataList.push(stockName);
+    historicalDataList.push({"stockName": stockName});
     if(getRequests == 0){ //when we have finished all our requests..
         drawGraph(context); //..we execute the drawGraph
     }
 }
 function drawGraph(context){
 
+    loader.style.display = "none"; //hide the loading spinner and overlay
+    loaderOverlay.style.display = "none";
 
-    //TODO: fix the for loop to take every element and fix so that it can draw graphs for multiple stocks..
+
+    //TODO: Separate valueList by e.g. a "-", use the splitting to create the dataset for different stocks
     var dateList = [];
     var valueList = [];
+    var stockNameList = [];
+
+    historicalDataList.reverse();
     
-    for(var i = 1; i<4000; i++){
+    for(var i = 0; i<historicalDataList.length; i++){
         for(var key in historicalDataList[i]){
+            if(key == "stockName"){
+                stockNameList.push({"stockName" : historicalDataList[i]["stockName"], "startIndex": i+1});
+                continue; //we end the current iteration because we received a new stock value
+            }
             var date = historicalDataList[i]["date"];
             var value = historicalDataList[i]["value"];
             dateList.push(date);
             valueList.push(value);
         }
+    }
+    //use jquery to remove duplicates in the dateList. 
+    var uniqueDates = [];
+    $.each(dateList, function(i, el){
+        if($.inArray(el, uniqueDates) === -1){
+            uniqueDates.push(el);
+        }
+    });
+
+    dataSet = []; //we need to compose our dataset before we send it to the chart constructor.
+    for (var i = 0; i<stockNameList.length; i++){ //for every stock, construct a data array
+
     }
 
     var portfolioName = context.parentNode.parentNode.childNodes[0].childNodes[0].innerHTML;
@@ -515,16 +562,16 @@ function drawGraph(context){
     var myChart = new Chart(canvas, { //draw chart
         type: 'line',
         data: {
-            labels: dateList,
+            labels: uniqueDates,
             datasets: [{
-                label: "MSFT",
+                label: stockNameList[0]["stockName"],
                 radius: 0, // radius is 0 for only this dataset
                 backgroundColor: 'rgb(220,20,60)',
                 borderColor: 'rgb(220,20,60)',
                 data: valueList,
                 fill: false,
             }, {
-                label: "AAPL",
+                label: stockNameList[1]["stockName"],
                 backgroundColor: 'rgb(0,191,255)',
                 borderColor: 'rgb(0,191,255)',
                 data: [
@@ -572,6 +619,12 @@ function updateChart(){ //if the user chooses to update the chart, we adjust the
     alert("hi");
 }
 function refreshStocks(){ //refresh all the stock values, which means we have to make an API request for every stock in the portfolio.
+    loader = document.getElementById("loader"); //initiate loading sign and overlay
+    loaderOverlay = document.getElementById("loaderOverlay");
+
+    loader.style.display = "block";
+    loaderOverlay.style.display = "block";
+
     var context = this;
     var middleDiv = context.parentNode.parentNode.childNodes[1];
     var table = middleDiv.childNodes[0];
@@ -670,6 +723,9 @@ function removeSelected(){
 }
 
 function updateTotalValue(context){ //updating the total value of the portfolio.
+    
+    var loader = document.getElementById("loader"); //we want to hide the loading spinner
+    var loaderOverlay = document.getElementById("loaderOverlay");
 
     //set the correct currency 
     var topDiv = context.parentNode.parentNode.childNodes[0]; 
@@ -705,4 +761,8 @@ function updateTotalValue(context){ //updating the total value of the portfolio.
 
     var totalValueText = document.createTextNode("Total value of "+ portfolioName +": "+ totalValue + " "+currency);
     totalValueDiv.appendChild(totalValueText);
+
+    loader.style.display = "none"; //hide loader
+    loaderOverlay.style.display = "none";
+
 }

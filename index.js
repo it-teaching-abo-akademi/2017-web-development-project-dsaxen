@@ -490,12 +490,16 @@ function drawGraph(context){
                 stockNameList.push({"stockName" : historicalDataList[i]["stockName"], "startIndex": i+1});
                 continue; //we end the current iteration because we received a new stock value
             }
-            var date = historicalDataList[i]["date"];
-            var value = historicalDataList[i]["value"];
-            dateList.push(date);
-            valueList.push(value);
         }
+		
+        var date = historicalDataList[i]["date"];
+        var value = historicalDataList[i]["value"];
+        dateList.push(date);
+        valueList.push(value);
     }
+	
+	
+	
     //use jquery to remove duplicates in the dateList. 
     var uniqueDates = [];
     $.each(dateList, function(i, el){
@@ -504,9 +508,31 @@ function drawGraph(context){
         }
     });
 
-    dataSet = []; //we need to compose our dataset before we send it to the chart constructor.
+    var dataSet = []; //we need to compose our dataset before we send it to the chart constructor.
+	var colors = ["red", "blue", "green", "black", "yellow", "purple"];
     for (var i = 0; i<stockNameList.length; i++){ //for every stock, construct a data array
-
+		console.log(i);
+		if(stockNameList.length == i + 1){
+			console.log(stockNameList[i]["startIndex"]);
+			var stockValues = valueList.splice(stockNameList[i]["startIndex"],valueList.length-1);
+			console.log(stockValues);
+		}
+		else{
+			var stockValues = valueList.splice(stockNameList[i]["startIndex"],stockNameList[i+1]["startIndex"]);		
+		}
+		var randomColor = colors[Math.floor(Math.random() * colors.length)]; //choose a random color and remove it
+		var index = colors.indexOf(randomColor);
+		colors.splice(index, 1);
+		var stockInfo = {
+			label : stockNameList[i]["stockName"],
+			radius: 0, // radius is 0 for only this dataset
+            backgroundColor: randomColor,
+            borderColor: randomColor,
+            data: stockValues,
+            fill: false,
+		};	
+		dataSet.push(stockInfo);
+		console.log(dataSet);
     }
 
     var portfolioName = context.parentNode.parentNode.childNodes[0].childNodes[0].innerHTML;
@@ -563,7 +589,7 @@ function drawGraph(context){
         type: 'line',
         data: {
             labels: uniqueDates,
-            datasets: [{
+            datasets: dataSet, /* [{
                 label: stockNameList[0]["stockName"],
                 radius: 0, // radius is 0 for only this dataset
                 backgroundColor: 'rgb(220,20,60)',
@@ -571,14 +597,14 @@ function drawGraph(context){
                 data: valueList,
                 fill: false,
             }, {
-                label: stockNameList[1]["stockName"],
+                label: "Aapl",
                 backgroundColor: 'rgb(0,191,255)',
                 borderColor: 'rgb(0,191,255)',
                 data: [
                     23,35,87,21,2,1,5
                 ],
                 fill: false,
-            }]
+            }]*/
         },
         options: {
             responsive: true,

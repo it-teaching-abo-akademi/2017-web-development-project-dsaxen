@@ -16,13 +16,13 @@ window.onload=function(){ //this function is executed after DOM has fully loaded
 // A SIMPLE GET REQUEST FUNCTION
 function getRequest(url, callback, context){
     var xmlHttp = new XMLHttpRequest();
+    xmlHttp.open("GET", url, true);
     xmlHttp.onreadystatechange = function(){ //called when the server responds with data
         if(this.readyState == 4 && this.status == 200){
             var getData = JSON.parse(xmlHttp.responseText);
             callback(getData, context); //pass the list and context to addStockCallback function
         }
     }
-    xmlHttp.open("GET", url, true);
     xmlHttp.send();
 }
 function hideOverlay(){ //hide overlays and remove the old canvas
@@ -327,7 +327,7 @@ function addStock(){
     loader.style.display = "block";
     loaderOverlay.style.display = "block";
 
-    getRequest("https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol=" + stockName + "&interval=1min&apikey=VV6I5M93ATB8Z7JW", addStockCallback, context); //send the context further
+    getRequest("https://www.alphavantage.co/query?function=BATCH_STOCK_QUOTES&symbols=" + stockName + "&apikey=VV6I5M93ATB8Z7JW", addStockCallback, context); //send the context further
 }
 function addStockCallback(data, context){
 
@@ -348,11 +348,12 @@ function addStockCallback(data, context){
     //get stock value from API
     if(data["Error Message"] != null){ //if there is an error message, you have typed in an invalid stock symbol.
         alert("You typed a stock symbol that does not exist. Please try again.");
+        loader.style.display = "none"; //hide loader
+        loaderOverlay.style.display = "none";
         return;
     }
-    var unitKeys = Object.keys(data["Time Series (1min)"]); //find the keys
-    var recentKey = unitKeys[0]; //the first key has the most recent stock close value.
-    var unitValue = data["Time Series (1min)"][recentKey]["4. close"];
+    var unitKeys = Object.keys(data["Stock Quotes"]); //find the keys
+    var unitValue = data["Stock Quotes"][unitKeys[0]]["2. price"];
     unitValue = Math.round(unitValue*100)/100; //rounds to two decimals
 
     //the get request returns values in dollars. If euro is chosen before adding a stock, we need to manipulate the unit value.
@@ -448,30 +449,36 @@ function valuePerformance(){ //API request for every stock with historical data 
     var stockNameCell = 0;
     getRequests = tableLength - 1;
 
-    for (var i = 1; i < tableLength; i++){ //loop through every stock in the table, 
+    for (var i = 1; i < tableLength; i++){ //loop through every stock in the table,
         var stockName = table.getElementsByTagName("td")[stockNameCell].innerText;
-        getRequest("https://www.alphavantage.co/query?function=TIME_SERIES_DAILY_ADJUSTED&symbol=" + stockName + "&outputsize=full&apikey=VV6I5M93ATB8Z7JW", gatherHistoricalData, context)
+        getRequest("http://www.alphavantage.co/query?function=TIME_SERIES_DAILY_ADJUSTED&symbol=" + stockName + "&outputsize=full&apikey=VV6I5M93ATB8Z7JW", gatherHistoricalData, context);
         stockNameCell += 5;
     }
 }
 function gatherHistoricalData(data, context){
     getRequests--;
-    var unitKeys = Object.keys(data["Time Series (Daily)"]); //the keys are the dates
+    try{
+        var unitKeys = Object.keys(data["Time Series (Daily)"]); //the keys are the dates
+    }
+    catch(TypeError){
+        loader.style.display = "none"; //hide loader
+        loaderOverlay.style.display = "none";
+        alert("API call failed.");
+        return;
+    }
 
     for (var i = 0; i<unitKeys.length; i++){
         var unitValue = data["Time Series (Daily)"][unitKeys[i]]["5. adjusted close"]; //use the adjusted close
         var dateValuePair = {"date": unitKeys[i], "value": unitValue};
         historicalDataList.push(dateValuePair);
     }
-
     var stockName = data["Meta Data"]["2. Symbol"];
     historicalDataList.push({"stockName": stockName});
     if(getRequests == 0){ //when we have finished all our requests..
         drawGraph(context); //..we execute the drawGraph
     }
 }
-function drawGraph(context){
-
+function drawGraph(context){ //TODO: adjust time window, adjust so that multiple graphs with different start dates are placed accordingly.
     loader.style.display = "none"; //hide the loading spinner and overlay
     loaderOverlay.style.display = "none";
 
@@ -480,7 +487,7 @@ function drawGraph(context){
     var stockNameList = [];
 
     historicalDataList.reverse();
-    
+
     for(var i = 0; i<historicalDataList.length; i++){
         for(var key in historicalDataList[i]){
             if(key == "stockName"){
@@ -501,20 +508,23 @@ function drawGraph(context){
             uniqueDates.push(el);
         }
     });
-
+    uniqueDates.shift(); //we delete the first, "undefined" term
     var dataSet = []; //we need to compose our dataset before we send it to the chart constructor.
-    var colors = ["red", "blue", "green", "black", "yellow", "purple"];
+    var colors = ["red", "blue", "green", "black", "grey", "purple"];
+    
     for (var i = 0; i<stockNameList.length; i++){ //for every stock, construct a data array
+        var stockValues = [];
 		if(stockNameList.length == i + 1){
-			var stockValues = valueList.splice(stockNameList[i]["startIndex"],valueList.length-1);
-			console.log(stockValues);
+            console.log(stockNameList[i]["startIndex"]);
+            stockValues = valueList.slice(stockNameList[i]["startIndex"], valueList.length-1);
 		}
 		else{
-			var stockValues = valueList.splice(stockNameList[i]["startIndex"],stockNameList[i+1]["startIndex"]);		
+            stockValues = valueList.slice(stockNameList[i]["startIndex"], stockNameList[i+1]["startIndex" - 1]);
 		}
 		var randomColor = colors[Math.floor(Math.random() * colors.length)]; //choose a random color and remove it
 		var index = colors.indexOf(randomColor);
-		colors.splice(index, 1);
+        colors.splice(index, 1);
+        
 		var stockInfo = {
 			label : stockNameList[i]["stockName"],
 			radius: 0, // radius is 0 for only this dataset
@@ -522,9 +532,8 @@ function drawGraph(context){
             borderColor: randomColor,
             data: stockValues,
             fill: false,
-		};	
-		dataSet.push(stockInfo);
-		console.log(dataSet);
+        };	
+        dataSet.push(stockInfo);
     }
 
     var portfolioName = context.parentNode.parentNode.childNodes[0].childNodes[0].innerHTML;
@@ -580,23 +589,8 @@ function drawGraph(context){
     var myChart = new Chart(canvas, { //draw chart
         type: 'line',
         data: {
-            labels: uniqueDates,
-            datasets: dataSet, /* [{
-                label: stockNameList[0]["stockName"],
-                radius: 0, // radius is 0 for only this dataset
-                backgroundColor: 'rgb(220,20,60)',
-                borderColor: 'rgb(220,20,60)',
-                data: valueList,
-                fill: false,
-            }, {
-                label: "Aapl",
-                backgroundColor: 'rgb(0,191,255)',
-                borderColor: 'rgb(0,191,255)',
-                data: [
-                    23,35,87,21,2,1,5
-                ],
-                fill: false,
-            }]*/
+            labels: uniqueDates, //our dates
+            datasets: dataSet, //our set of lists with values
         },
         options: {
             responsive: true,
@@ -630,7 +624,7 @@ function drawGraph(context){
             }
         }
     });
-    //adjustButton.addEventListener("click", updateChart); //we add the event listener to the button
+    adjustButton.addEventListener("click", updateChart); //we add the event listener to the button
 }
 
 function updateChart(){ //if the user chooses to update the chart, we adjust the time window according to the choices the user made.
@@ -657,7 +651,7 @@ function refreshStocks(){ //refresh all the stock values, which means we have to
 
     for (var i = 1; i<tableLength; i++){ //for every stock, update the unit value and total value
         var refreshStockName = table.getElementsByTagName("td")[stockNameCell].innerText;
-        getRequest("https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol=" + refreshStockName + "&interval=1min&apikey=VV6I5M93ATB8Z7JW", refreshCallback, context); //send the context further
+        getRequest("https://www.alphavantage.co/query?function=BATCH_STOCK_QUOTES&symbols=" + refreshStockName + "&apikey=VV6I5M93ATB8Z7JW", refreshCallback, context); //send the context further
         stockNameCell += 5;
     }
 
@@ -677,13 +671,12 @@ function refreshCallback(data, context){
         currency = "$";
     }
 
-    var requestStockName = data["Meta Data"]["2. Symbol"];
 
-    var unitKeys = Object.keys(data["Time Series (1min)"]); //find the keys
-    var recentKey = unitKeys[0]; //the first key has the most recent stock close value.
-    var unitValue = data["Time Series (1min)"][recentKey]["4. close"]; //the newest unit value
-    unitValue = Math.round(parseFloat(unitValue) * 100) / 100;
+    var unitKeys = Object.keys(data["Stock Quotes"]); //find the keys
+    var unitValue = data["Stock Quotes"][unitKeys[0]]["2. price"];
+    unitValue = Math.round(unitValue*100)/100; //rounds to two decimals
 
+    var requestStockName = data["Stock Quotes"][unitKeys[0]]["1. symbol"];
 
 
     if(showEurosButton.disabled){ // in this case, euros are chosen. We use the latest rate which we got when we clicked on the "show in €" or "Refresh exchange rate" button.

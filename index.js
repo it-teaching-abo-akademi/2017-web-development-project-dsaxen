@@ -451,7 +451,7 @@ function valuePerformance(){ //API request for every stock with historical data 
 
     for (var i = 1; i < tableLength; i++){ //loop through every stock in the table,
         var stockName = table.getElementsByTagName("td")[stockNameCell].innerText;
-        getRequest("http://www.alphavantage.co/query?function=TIME_SERIES_DAILY_ADJUSTED&symbol=" + stockName + "&outputsize=full&apikey=VV6I5M93ATB8Z7JW", gatherHistoricalData, context);
+        getRequest("https://www.alphavantage.co/query?function=TIME_SERIES_DAILY_ADJUSTED&symbol=" + stockName + "&outputsize=full&apikey=VV6I5M93ATB8Z7JW", gatherHistoricalData, context);
         stockNameCell += 5;
     }
 }

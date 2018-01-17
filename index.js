@@ -22,6 +22,15 @@ function getRequest(url, callback, context){
             var getData = JSON.parse(xmlHttp.responseText);
             callback(getData, context); //pass the list and context to addStockCallback function
         }
+        else if (this.status == 503){ //if the API could not handle the request
+            loader = context.parentNode.parentNode.childNodes[4]; //we want to hide the loader
+            loaderOverlay = context.parentNode.parentNode.childNodes[5];
+
+            loader.style.display = "none"; //hide loader
+            loaderOverlay.style.display = "none";
+
+            alert("The API could not handle the request at the moment. Please try again.");
+        }
     }
     xmlHttp.send();
 }
@@ -529,7 +538,7 @@ function drawGraph(context){ //TODO: adjust time window, adjust so that multiple
     uniqueDates.shift(); //we delete the first, "undefined" term
 
     var dataSet = []; //we need to compose our dataset before we send it to the chart constructor.
-    var colors = ["rgb(255,51,51)", "rgb(102,255,102)", "rgb(255,153,51)", "rgb(255,0,255)", "rgb(0,204,204)"];
+    var colors = ["rgba(160, 255, 102, 0.3)", "rgba(220, 20, 60, 0.3)", "rgba(0, 204, 204, 0.3)", "rgba(37, 252, 234, 0.3)"];
     
     for (var i = 0; i<stockNameList.length; i++){ //for every stock, construct a data array
         var stockValues = [];
@@ -572,9 +581,11 @@ function drawGraph(context){ //TODO: adjust time window, adjust so that multiple
     var month = today.getMonth() + 1; 
     var year = today.getFullYear();
 
-    var yesterday = new Date(date.getTime());
-    yesterday.setDate(date.getDate() - 1);
-    console.log(yesterday);
+    var yesterDate = new Date(today.getTime());
+    yesterDate.setDate(today.getDate() - 1);
+    var yesterDay = yesterDate.getDate();
+    var yesterMonth = yesterDate.getMonth() + 1;
+    var yesterYear = yesterDate.getFullYear();
 
     if(day < 10){
         day = '0' + day;
@@ -582,11 +593,19 @@ function drawGraph(context){ //TODO: adjust time window, adjust so that multiple
     if (month < 10){
         month = '0' + month;
     }
+    if(yesterDay < 10){
+        yesterDay = '0' + yesterDay;
+    }
+    if(yesterMonth < 10){
+        yesterMonth = '0' + yesterMonth;
+    }
     today = year + "-" + month + "-" + day;
+    yesterday = yesterYear + "-" + yesterMonth + "-" + yesterDay;
 
     var startDate = document.createElement("input"); //create start and end date inputs
     startDate.setAttribute("type", "date");
     startDate.setAttribute("min", "2000-01-03"); //the alphavantage API limits the data to this date
+    startDate.setAttribute("max", yesterday); //maximum value is yesteday's date
     startDate.id = "startDate";
 
     var endDate = document.createElement("input");

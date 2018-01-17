@@ -3,13 +3,16 @@ var historicalDataList = [];
 var getRequests;
 
 window.onload=function(){ //this function is executed after DOM has fully loaded
-    
         //button onclick
         document.getElementById("addPortfolioButton").onclick = addPortfolio;
 
         //overlay onclick hides overlay
         document.getElementById("overlay").onclick = hideOverlay;
+
+        //localStorage.clear();
+
         //load local storage
+        loadData();
 
 }
 
@@ -22,14 +25,14 @@ function getRequest(url, callback, context){
             var getData = JSON.parse(xmlHttp.responseText);
             callback(getData, context); //pass the list and context to addStockCallback function
         }
-        else if (this.status == 503){ //if the API could not handle the request
-            loader = context.parentNode.parentNode.childNodes[4]; //we want to hide the loader
+        else if (this.status != 200 && this.status != 301 && this.status != 302){ //errors which are risen when the API fails to deliver desired data, which is unfortunately common for AlphaVantage.
+            loader = context.parentNode.parentNode.childNodes[4]; //initiate loading sign and overlay
             loaderOverlay = context.parentNode.parentNode.childNodes[5];
-
-            loader.style.display = "none"; //hide loader
+        
+            loader.style.display = "none";
             loaderOverlay.style.display = "none";
 
-            alert("The API could not handle the request at the moment. Please try again.");
+            alert("The API could not handle the request at the moment. Please try again later."); 
         }
     }
     xmlHttp.send();
@@ -48,6 +51,7 @@ function hideOverlay(){ //hide overlays and remove the meold canvas
     
 }
 function addPortfolio(){
+
     var totalValue = 0;
     var portfoliosAmount = document.getElementById("portfolios").children.length;
     var portfolioName = prompt("Please enter the portfolio name:");
@@ -77,6 +81,7 @@ function addPortfolio(){
     var portfolioList = document.getElementById("portfolios");
     var portfolioDiv = document.createElement("div"); //create portfolio div
     portfolioDiv.style.cssText = "width: 70vh; height: 40vh; border: 2px solid black; position: relative; float: left; margin-top: 15px; margin-left: 15px;";
+    portfolioDiv.className = "portfolioDiv";
 
     topDiv = document.createElement("div");
     topDiv.style.cssText = "position: relative; top: 0; width: 100%; margin-top: 5px; margin-left: 5px; font-size: 18px;";
@@ -139,7 +144,7 @@ function addPortfolio(){
 
     var currency = "$";
     
-    var totalValueText = document.createTextNode("Total value of "+ portfolioName+": "+totalValue + " "+currency);
+    var totalValueText = document.createTextNode("Total value of "+ portfolioName+": "+ totalValue + " "+currency);
     totalValueDiv.appendChild(totalValueText);
 
     //create and append buttons
@@ -201,7 +206,9 @@ function addPortfolio(){
     removeSelectedButton.addEventListener("click", removeSelected);
 
     portfolioList.appendChild(portfolioDiv); //append portfolio to the list of portfolios
-
+    
+    context = showEurosButton;
+    saveData(context); //save portfolio to local storage1
 }
 
 function showEuros(){
@@ -318,6 +325,7 @@ function showDollarsCallback(data, context){
 }
 
 function removePortfolio(){
+    var context = this;
     if(confirm("Are you sure you want to remove this portfolio?")){
         var portfolioDiv = this.parentNode.parentNode;
         portfolioDiv.parentNode.removeChild(portfolioDiv); //remove the parent div (the whole portfolio)
@@ -325,6 +333,7 @@ function removePortfolio(){
     else{
         return;
     }
+    saveData(context); //save to local storage
 }
 
 function addStock(){
@@ -369,9 +378,9 @@ function addStockCallback(data, context){
 
     //get stock value from API
     if(data["Error Message"] != null){ //if there is an error message, you have typed in an invalid stock symbol.
-        alert("You typed a stock symbol that does not exist. Please try again.");
         loader.style.display = "none"; //hide loader
         loaderOverlay.style.display = "none";
+        alert("You typed a stock symbol that does not exist. Please try again.");
         return;
     }
     var unitKeys = Object.keys(data["Stock Quotes"]); //find the keys
@@ -393,6 +402,8 @@ function addStockCallback(data, context){
     var tableLength = table.rows.length;
 
     if(tableLength > 50){ //if the user has more than 50 different stocks, the system will prompt with a message that tells you to delete stocks before adding more
+        loader.style.display = "none";
+        loaderOverlay.style.display = "none";
         alert("You have the maximum number of different stocks in this portfolio. Please remove a stock in order to make room for more stocks.");
         return;
     }
@@ -454,11 +465,8 @@ function addStockCallback(data, context){
     updateTotalValue(context);
 }
 function valuePerformance(){ //API request for every stock with historical data (up to 20 years)
-
-    
     
     var context = this;
-    
     
     loader = context.parentNode.parentNode.childNodes[4]; //initiate loading sign and overlay
     loaderOverlay = context.parentNode.parentNode.childNodes[5];
@@ -470,6 +478,8 @@ function valuePerformance(){ //API request for every stock with historical data 
     var tableLength = table.rows.length;
 
     if(tableLength == 1){
+        loader.style.display = "none"; //hide loader
+        loaderOverlay.style.display = "none";
         alert("You do not have any stocks to graph. Please add a stock.");
         return;
     }
@@ -483,6 +493,7 @@ function valuePerformance(){ //API request for every stock with historical data 
     }
 }
 function gatherHistoricalData(data, context){
+    console.log(data);
     getRequests--;
     try{
         var unitKeys = Object.keys(data["Time Series (Daily)"]); //the keys are the dates
@@ -490,7 +501,7 @@ function gatherHistoricalData(data, context){
     catch(TypeError){
         loader.style.display = "none"; //hide loader
         loaderOverlay.style.display = "none";
-        alert("API call failed.");
+        alert("API call failed. Please retry in a moment.");
         return;
     }
 
@@ -665,14 +676,25 @@ function drawGraph(context){ //TODO: adjust time window, adjust so that multiple
             }
         }
     });
-    adjustButton.addEventListener("click", updateChart); //we add the event listener to the button
+    adjustButton.addEventListener("click", function(){
+        updateChart(myChart, uniqueDates, dataSet);
+    }, false); //we add the event listener to the button
 }
 
-function updateChart(myChart){ //if the user chooses to update the chart, we adjust the time window according to the choices the user made.
-    alert("hi");
+function updateChart(myChart, uniqueDates, dataSet){ //if the user chooses to update the chart, we adjust the time window according to the choices the user made.
+    var startDate = document.getElementById("startDate").value;
+    var endDate = document.getElementById("endDate").value;
+
+    var slicedDates = [];
+    slicedDates = uniqueDates.slice(uniqueDates.indexOf(startDate), uniqueDates.indexOf(endDate));
+    myChart.data.labels = slicedDates; //dates are updated, but we need to update the values
+
+    //update values: the first value must be of the same index
+
+
+    myChart.update();
 }
 function refreshStocks(){ //refresh all the stock values, which means we have to make an API request for every stock in the portfolio.
-
     
     var context = this;
 
@@ -687,6 +709,8 @@ function refreshStocks(){ //refresh all the stock values, which means we have to
     var tableLength = table.rows.length;
 
     if(tableLength == 1){
+        loader.style.display = "none";
+        loaderOverlay.style.display = "none";
         alert("You do not have any stocks to refresh. Please add a stock.");
         return;
     }
@@ -714,7 +738,6 @@ function refreshCallback(data, context){
     else{
         currency = "$";
     }
-
 
     var unitKeys = Object.keys(data["Stock Quotes"]); //find the keys
     var unitValue = data["Stock Quotes"][unitKeys[0]]["2. price"];
@@ -779,7 +802,6 @@ function removeSelected(){
 
 function updateTotalValue(context){ //updating the total value of the portfolio.
     
-    
     loader = context.parentNode.parentNode.childNodes[4]; //we want to hide the loader
     loaderOverlay = context.parentNode.parentNode.childNodes[5];
 
@@ -820,4 +842,27 @@ function updateTotalValue(context){ //updating the total value of the portfolio.
 
     loader.style.display = "none"; //hide loader
     loaderOverlay.style.display = "none";
+
+    saveData(context); //update the local storaage
+}
+
+//localstorage functions
+function saveData(context){
+    var portfolioData = []; //we push here our portfolio objects
+
+    var portfolios = document.getElementsByClassName("portfolioDiv");
+    //create portfolio objects
+
+    //portfolio properties to be saved: portfolio name, chosen currency, stock name, unit value, quantitie, total value and portfolio total value.
+    for(var i = 0; i < portfolios.length; i++){ //create and push each portfolio object to the array
+        var portfolioObject = {};
+        portfolioObject["portfolioName"] =  context.parentNode.parentNode.childNodes[0].childNodes[0].innerHTML;
+        portfolioData.push(portfolioObject);
+    }
+    console.log(JSON.stringify(portfolioData));
+    localStorage.setItem('portfolioData', JSON.stringify(portfolioData)) //save the data with json stringify
+}
+function loadData(){
+    var portfolios = localStorage.getItem('portfolioData');
+    console.log(portfolios);
 }

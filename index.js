@@ -25,7 +25,7 @@ function getRequest(url, callback, context){
     }
     xmlHttp.send();
 }
-function hideOverlay(){ //hide overlays and remove the old canvas
+function hideOverlay(){ //hide overlays and remove the meold canvas
 
     var performanceDiv = document.getElementById("performanceDiv");
     document.getElementById("overlay").style.display = "none"; //hide overlays
@@ -82,6 +82,12 @@ function addPortfolio(){
 
     bottomDiv = document.createElement("div"); //create div for bottom line (three buttons)
     bottomDiv.style.cssText = "position: absolute; bottom: 0; width: 100%";
+
+    loaderDiv = document.createElement("div"); //create loader and loader overlay divs
+    loaderDiv.id = "loader";
+
+    loaderOverlay = document.createElement("div");
+    loaderOverlay.id = "loaderOverlay";
 
     //create title
 
@@ -173,6 +179,9 @@ function addPortfolio(){
     portfolioDiv.appendChild(totalValueDiv); //append div line with total value
     portfolioDiv.appendChild(bottomDiv); //append bottom line to the parent
 
+    portfolioDiv.appendChild(loaderDiv); //append loader to portfolio
+    portfolioDiv.appendChild(loaderOverlay);
+
     showEurosButton.addEventListener("click", showEuros); //add listeners to the buttons
     showDollarsButton.addEventListener("click", showDollars);
     removePortfolioButton.addEventListener("click", removePortfolio); 
@@ -187,13 +196,15 @@ function addPortfolio(){
 }
 
 function showEuros(){
-    loader = document.getElementById("loader"); //initiate loading sign and overlay
-    loaderOverlay = document.getElementById("loaderOverlay");
+
+    var context = this;
+
+    loader = context.parentNode.parentNode.childNodes[4]; //initiate loading sign and overlay
+    loaderOverlay = context.parentNode.parentNode.childNodes[5];
 
     loader.style.display = "block";
     loaderOverlay.style.display = "block";
 
-    var context = this;
     var topDiv = context.parentNode.parentNode.childNodes[0]; 
     var showEurosButton = topDiv.childNodes[1];
     var showDollarsButton = topDiv.childNodes[2];
@@ -241,13 +252,14 @@ function showEurosCallback(data, context){
     updateTotalValue(context); //after updating the tables, we need to update the total value.
 }
 function showDollars(){
-    loader = document.getElementById("loader"); //initiate loading sign and overlay
-    loaderOverlay = document.getElementById("loaderOverlay");
+    var context = this;
+    
+    loader = context.parentNode.parentNode.childNodes[4]; //initiate loading sign and overlay
+    loaderOverlay = context.parentNode.parentNode.childNodes[5];
 
     loader.style.display = "block";
     loaderOverlay.style.display = "block";
 
-    var context = this;
     var topDiv = context.parentNode.parentNode.childNodes[0]; 
     var showEurosButton = topDiv.childNodes[1];
     var showDollarsButton = topDiv.childNodes[2];
@@ -322,8 +334,9 @@ function addStock(){
         return;
     }
 
-    loader = document.getElementById("loader"); //initiate loading sign and overlay
-    loaderOverlay = document.getElementById("loaderOverlay");
+    
+    loader = context.parentNode.parentNode.childNodes[4]; //initiate loading sign and overlay
+    loaderOverlay = context.parentNode.parentNode.childNodes[5];
     loader.style.display = "block";
     loaderOverlay.style.display = "block";
 
@@ -355,6 +368,8 @@ function addStockCallback(data, context){
     var unitKeys = Object.keys(data["Stock Quotes"]); //find the keys
     var unitValue = data["Stock Quotes"][unitKeys[0]]["2. price"];
     unitValue = Math.round(unitValue*100)/100; //rounds to two decimals
+
+    var stockName = data["Stock Quotes"][unitKeys[0]]["1. symbol"];
 
     //the get request returns values in dollars. If euro is chosen before adding a stock, we need to manipulate the unit value.
 
@@ -431,13 +446,16 @@ function addStockCallback(data, context){
 }
 function valuePerformance(){ //API request for every stock with historical data (up to 20 years)
 
-    loader = document.getElementById("loader"); //initiate loading sign and overlay
-    loaderOverlay = document.getElementById("loaderOverlay");
+    
+    
+    var context = this;
+    
+    
+    loader = context.parentNode.parentNode.childNodes[4]; //initiate loading sign and overlay
+    loaderOverlay = context.parentNode.parentNode.childNodes[5];
 
     loader.style.display = "block";
     loaderOverlay.style.display = "block";
-
-    var context = this;
 
     var table = this.parentNode.parentNode.childNodes[1].childNodes[0];
     var tableLength = table.rows.length;
@@ -509,13 +527,13 @@ function drawGraph(context){ //TODO: adjust time window, adjust so that multiple
         }
     });
     uniqueDates.shift(); //we delete the first, "undefined" term
+
     var dataSet = []; //we need to compose our dataset before we send it to the chart constructor.
-    var colors = ["red", "blue", "green", "black", "grey", "purple"];
+    var colors = ["rgb(255,51,51)", "rgb(102,255,102)", "rgb(255,153,51)", "rgb(255,0,255)", "rgb(0,204,204)"];
     
     for (var i = 0; i<stockNameList.length; i++){ //for every stock, construct a data array
         var stockValues = [];
 		if(stockNameList.length == i + 1){
-            console.log(stockNameList[i]["startIndex"]);
             stockValues = valueList.slice(stockNameList[i]["startIndex"], valueList.length-1);
 		}
 		else{
@@ -553,6 +571,10 @@ function drawGraph(context){ //TODO: adjust time window, adjust so that multiple
     var day = today.getDate();
     var month = today.getMonth() + 1; 
     var year = today.getFullYear();
+
+    var yesterday = new Date(date.getTime());
+    yesterday.setDate(date.getDate() - 1);
+    console.log(yesterday);
 
     if(day < 10){
         day = '0' + day;
@@ -627,17 +649,20 @@ function drawGraph(context){ //TODO: adjust time window, adjust so that multiple
     adjustButton.addEventListener("click", updateChart); //we add the event listener to the button
 }
 
-function updateChart(){ //if the user chooses to update the chart, we adjust the time window according to the choices the user made.
+function updateChart(myChart){ //if the user chooses to update the chart, we adjust the time window according to the choices the user made.
     alert("hi");
 }
 function refreshStocks(){ //refresh all the stock values, which means we have to make an API request for every stock in the portfolio.
-    loader = document.getElementById("loader"); //initiate loading sign and overlay
-    loaderOverlay = document.getElementById("loaderOverlay");
+
+    
+    var context = this;
+
+    loader = context.parentNode.parentNode.childNodes[4]; //initiate loading sign and overlay
+    loaderOverlay = context.parentNode.parentNode.childNodes[5];;
 
     loader.style.display = "block";
     loaderOverlay.style.display = "block";
 
-    var context = this;
     var middleDiv = context.parentNode.parentNode.childNodes[1];
     var table = middleDiv.childNodes[0];
     var tableLength = table.rows.length;
@@ -735,8 +760,9 @@ function removeSelected(){
 
 function updateTotalValue(context){ //updating the total value of the portfolio.
     
-    var loader = document.getElementById("loader"); //we want to hide the loading spinner
-    var loaderOverlay = document.getElementById("loaderOverlay");
+    
+    loader = context.parentNode.parentNode.childNodes[4]; //we want to hide the loader
+    loaderOverlay = context.parentNode.parentNode.childNodes[5];
 
     //set the correct currency 
     var topDiv = context.parentNode.parentNode.childNodes[0]; 
@@ -775,5 +801,4 @@ function updateTotalValue(context){ //updating the total value of the portfolio.
 
     loader.style.display = "none"; //hide loader
     loaderOverlay.style.display = "none";
-
 }

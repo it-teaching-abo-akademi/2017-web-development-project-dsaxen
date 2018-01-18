@@ -551,9 +551,10 @@ function drawGraph(context){ //TODO: adjust time window, adjust so that multiple
         var stockValues = [];
 		if(stockNameList.length == i + 1){
             stockValues = valueList.slice(stockNameList[i]["startIndex"], valueList.length-1);
+            console.log(stockValues);
 		}
 		else{
-            stockValues = valueList.slice(stockNameList[i]["startIndex"], stockNameList[i+1]["startIndex" - 1]);
+            stockValues = valueList.slice(stockNameList[i]["startIndex"], parseInt(stockNameList[i+1]["startIndex"]) - 1);
 		}
 		var randomColor = colors[Math.floor(Math.random() * colors.length)]; //choose a random color and remove it
 		var index = colors.indexOf(randomColor);
@@ -696,8 +697,6 @@ function updateChart(myChart, uniqueDates, dataSetCopy){ //if the user chooses t
 
     //update values: the first value must be of the same index
     for(var i = 0; i < dataSetCopy.length; i++){ //fix each and every dataSet so that the values actually start from the 
-        console.log(i);
-        console.log(dataSetCopy[i]["data"]);
         var stockValues = dataSetCopy[i]["data"]; //fetch values
         var slicedValues = [];
 

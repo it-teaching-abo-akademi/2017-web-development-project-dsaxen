@@ -607,6 +607,7 @@ function drawGraph(context){ //TODO: adjust time window, adjust so that multiple
 
     var dateDiv = document.createElement("div");
     var warningDiv = document.createElement("div");
+    warningDiv.id = "warningDiv";
 
     var canvas = document.createElement("canvas"); //create the canvas
     canvas.id = "graphCanvas";

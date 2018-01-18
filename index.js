@@ -382,7 +382,9 @@ function addStockCallback(data, context){
         return;
     }
     var unitKeys = Object.keys(data["Stock Quotes"]); //find the keys
-    if(unitKeys === undefined){
+    if(data["Stock Quotes"][unitKeys[0]] == null){
+        loader.style.display = "none"; //hide loader
+        loaderOverlay.style.display = "none";
         alert("You typed a stock symbol that does not exist. Please try again.");
         return;
     }

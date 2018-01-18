@@ -362,7 +362,6 @@ function addStock(){
 function addStockCallback(data, context){
 
     //set the correct currency
-    console.log(data);
     var topDiv = context.parentNode.parentNode.childNodes[0]; 
     var showEurosButton = topDiv.childNodes[1];
     var showDollarsButton = topDiv.childNodes[2];
@@ -502,7 +501,6 @@ function gatherHistoricalData(data, context){
         alert("API call failed. Please retry in a moment.");
         return;
     }
-
     for (var i = 0; i<unitKeys.length; i++){
         var unitValue = data["Time Series (Daily)"][unitKeys[i]]["5. adjusted close"]; //use the adjusted close
         var dateValuePair = {"date": unitKeys[i], "value": unitValue};
@@ -563,15 +561,14 @@ function drawGraph(context){ //TODO: adjust time window, adjust so that multiple
         
 		var stockInfo = {
 			label : stockNameList[i]["stockName"],
-			radius: 0, // radius is 0 for only this dataset
             backgroundColor: randomColor,
             borderColor: randomColor,
             data: stockValues,
+            radius: 0.5,
             fill: false,
         };	
         dataSet.push(stockInfo);
     }
-    console.log(dataSet);
 
     var portfolioName = context.parentNode.parentNode.childNodes[0].childNodes[0].innerHTML;
     
@@ -581,6 +578,7 @@ function drawGraph(context){ //TODO: adjust time window, adjust so that multiple
     performanceDiv.style.display = "block";
 
     var dateDiv = document.createElement("div");
+    var warningDiv = document.createElement("div");
 
     var canvas = document.createElement("canvas"); //create the canvas
     canvas.id = "graphCanvas";
@@ -628,15 +626,21 @@ function drawGraph(context){ //TODO: adjust time window, adjust so that multiple
     adjustButton.id= "adjustButton";
     adjustButton.innerHTML = "Adjust time window";
 
+    var span = document.createElement("span");
+    span.id = "warningSpan";
+    span.innerHTML = "Please do not select weekends or holidays as start or end dates.";
 
     dateDiv.appendChild(startDate);
     dateDiv.appendChild(endDate);
     dateDiv.appendChild(adjustButton);
+
+    warningDiv.appendChild(span);
     
     performanceDiv.appendChild(canvas); //append canvas and inputs
     performanceDiv.appendChild(dateDiv);
+    performanceDiv.appendChild(warningDiv);
 
-    var dataSetCopy = Object.assign({}, dataSet); //we make a shallow copy of the original data set.
+    var dataSetCopy = JSON.parse(JSON.stringify(dataSet)); //we make a copy of the original data set.
 
     var myChart = new Chart(canvas, { //draw chart
         type: 'line',
@@ -682,29 +686,32 @@ function drawGraph(context){ //TODO: adjust time window, adjust so that multiple
 }
 
 function updateChart(myChart, uniqueDates, dataSetCopy){ //if the user chooses to update the chart, we adjust the time window according to the choices the user made.
-
     var startDate = document.getElementById("startDate").value;
     var endDate = document.getElementById("endDate").value;
+
 
     var slicedDates = [];
     slicedDates = uniqueDates.slice(uniqueDates.indexOf(startDate), uniqueDates.indexOf(endDate));
     myChart.data.labels = slicedDates; //dates are updated, but we need to update the values
 
     //update values: the first value must be of the same index
-    for(var i = 0; i < myChart.data.datasets.length; i++){ //fix each and every dataSet so that the values actually start from the 
+    for(var i = 0; i < dataSetCopy.length; i++){ //fix each and every dataSet so that the values actually start from the 
+        console.log(i);
+        console.log(dataSetCopy[i]["data"]);
         var stockValues = dataSetCopy[i]["data"]; //fetch values
         var slicedValues = [];
 
-        slicedValues = stockValues.slice(stockValues.length - slicedDates.length, stockValues.length - 1) //start: stockvalues.length - slicedDates.length, end: stockvalues.length
-        console.log(slicedValues);
-        myChart.data.datasets[i]["data"] = slicedValues; //values are updated
+        startValue = (stockValues.length - 1) - (slicedDates.length - 1);
+        endValue = stockValues.length - 1;
+
+        slicedValues = stockValues.slice((stockValues.length - 1) - (slicedDates.length - 1), stockValues.length) //start: stockvalues.length - slicedDates.length, end: stockvalues.length
+        myChart.data.datasets[i]["data"] = slicedValues; //values are updated*/
     }
     myChart.update(); //update the chart
 }
 
-
 function refreshStocks(){ //refresh all the stock values, which means we have to make an API request for every stock in the portfolio.
-    
+
     var context = this;
 
     loader = context.parentNode.parentNode.childNodes[4]; //initiate loading sign and overlay
@@ -916,14 +923,13 @@ function loadData(){
     if(portfolios == null){ //if local storage is empty, we end the function execution
         return;
     }
-    console.log(portfolios.length);
 
     for (var i = 0; i < portfolios.length; i++){
-        console.log(i);
 
         //we need to create a div for each portfolio.
         var portfolioName = portfolios[i]["portfolioName"];
         var totalValue = portfolios[i]["portfolioValue"];
+        var euros = portfolios[i]["currency"];
 
         var portfolioList = document.getElementById("portfolios");
         var portfolioDiv = document.createElement("div"); //create portfolio div
@@ -988,8 +994,6 @@ function loadData(){
         
         tbl.appendChild(tr); //append row to table
         middleDiv.appendChild(tbl); //append table to middle div
-
-        var currency = "$";
         
         var totalValueText = document.createTextNode(totalValue);
         totalValueDiv.appendChild(totalValueText);
@@ -1004,6 +1008,11 @@ function loadData(){
         showDollarsButton.className = "currencyButton";
         showDollarsButton.innerHTML = "Show in $";
         showDollarsButton.disabled = true; //we begin initially with dollars.
+
+        if(euros){ //if the show in € button was enabled
+            showEurosButton.disabled = true;
+            showDollarsButton.disabled = false;
+        }
 
         var removePortfolioButton = document.createElement("button");
         removePortfolioButton.id = "removePortfolioButton";
@@ -1063,8 +1072,6 @@ function loadData(){
             return;
         }
 
-        console.log(table);
-
         for(var k = 0; k < table[unitKeys[0]].length; k++){
 
             var stockName = table[unitKeys[0]][k];
@@ -1109,5 +1116,4 @@ function loadData(){
             portfolioTable.style.display = "table"; //show table (it is initially hidden)
         }
     }
-
 }

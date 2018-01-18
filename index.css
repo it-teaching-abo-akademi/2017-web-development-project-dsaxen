@@ -135,7 +135,7 @@ th{
 #performanceDiv{
     position: fixed;
     width: 65%;
-    height: 85%;
+    height: 80%;
     z-index: 3;
     left:0;
     right: 0;
@@ -146,7 +146,7 @@ th{
 }
 #graphCanvas{
     width: 65%;
-    height: 25%;
+    height: 35%;
 }
 #adjustButton{
     width: 180px; 
@@ -155,6 +155,7 @@ th{
     background-color: white;
     border: 2px solid black;
     margin-left: 25px;
+    margin-right: 25px;
 }
 #adjustButton:hover{
     background-color: lightgrey;
@@ -174,9 +175,9 @@ th{
 }
 #loader { /*loading spinner*/
     position: absolute;
-    border: 16px solid #f3f3f3;
+    border: 10px solid #f3f3f3;
     border-radius: 50%;
-    border-top: 16px solid #3498db;
+    border-top: 10px solid #3498db;
     width: 40px;
     height: 40px;
     z-index: 3;
@@ -185,8 +186,8 @@ th{
     top: 0;
     bottom: 0;
     margin: auto;
-    -webkit-animation: spin 2s linear infinite; /* Safari */
-    animation: spin 2s linear infinite;
+    -webkit-animation: spin 1s linear infinite; /* Safari */
+    animation: spin 1s linear infinite;
     display: none;
   }
   @-webkit-keyframes spin {
@@ -209,5 +210,11 @@ th{
     bottom: 0;
     background-color: rgba(0,0,0,0.5);
     z-index: 2;
+  }
+  #warningSpan{
+    margin-left: 5%;
+    line-height: 30px;
+    font-size: 18px;
+    margin-top: 20px;
   }
   

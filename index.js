@@ -13,7 +13,6 @@ window.onload=function(){ //this function is executed after DOM has fully loaded
 
         //load local storage
         loadData();
-
 }
 
 // A SIMPLE GET REQUEST FUNCTION
@@ -208,7 +207,7 @@ function addPortfolio(){
     portfolioList.appendChild(portfolioDiv); //append portfolio to the list of portfolios
     
     context = showEurosButton;
-    saveData(context); //save portfolio to local storage1
+    saveData(); //save portfolio to local storage
 }
 
 function showEuros(){
@@ -333,7 +332,7 @@ function removePortfolio(){
     else{
         return;
     }
-    saveData(context); //save to local storage
+    saveData(); //save to local storage
 }
 
 function addStock(){
@@ -363,7 +362,7 @@ function addStock(){
 function addStockCallback(data, context){
 
     //set the correct currency
-
+    console.log(data);
     var topDiv = context.parentNode.parentNode.childNodes[0]; 
     var showEurosButton = topDiv.childNodes[1];
     var showDollarsButton = topDiv.childNodes[2];
@@ -637,6 +636,7 @@ function drawGraph(context){ //TODO: adjust time window, adjust so that multiple
     performanceDiv.appendChild(canvas); //append canvas and inputs
     performanceDiv.appendChild(dateDiv);
 
+    var dataSetCopy = Object.assign({}, dataSet); //we make a shallow copy of the original data set.
 
     var myChart = new Chart(canvas, { //draw chart
         type: 'line',
@@ -665,10 +665,6 @@ function drawGraph(context){ //TODO: adjust time window, adjust so that multiple
                         display: true,
                         labelString: 'Date'
                     },
-                    ticks: {
-                        suggestedMin: "2004-07-17",
-                        suggestedMax: "2018-01-18",
-                    }
                 }],
                 yAxes: [{
                     display: true,
@@ -681,12 +677,11 @@ function drawGraph(context){ //TODO: adjust time window, adjust so that multiple
         }
     });
     adjustButton.addEventListener("click", function(){
-        updateChart(myChart, uniqueDates, dataSet);
+        updateChart(myChart, uniqueDates, dataSetCopy);
     }); //we add the event listener to the button
 }
 
-function updateChart(myChart, uniqueDates, dataSet){ //if the user chooses to update the chart, we adjust the time window according to the choices the user made.
-    var newSet = [];
+function updateChart(myChart, uniqueDates, dataSetCopy){ //if the user chooses to update the chart, we adjust the time window according to the choices the user made.
 
     var startDate = document.getElementById("startDate").value;
     var endDate = document.getElementById("endDate").value;
@@ -696,20 +691,15 @@ function updateChart(myChart, uniqueDates, dataSet){ //if the user chooses to up
     myChart.data.labels = slicedDates; //dates are updated, but we need to update the values
 
     //update values: the first value must be of the same index
-    for(var i = 0; i < dataSet.length; i++){ //fix each and every dataSet so that the values actually start from the 
-        var stockValues = myChart.data.datasets[i]["data"]; //fetch values
+    for(var i = 0; i < myChart.data.datasets.length; i++){ //fix each and every dataSet so that the values actually start from the 
+        var stockValues = dataSetCopy[i]["data"]; //fetch values
         var slicedValues = [];
 
         slicedValues = stockValues.slice(stockValues.length - slicedDates.length, stockValues.length - 1) //start: stockvalues.length - slicedDates.length, end: stockvalues.length
-
+        console.log(slicedValues);
         myChart.data.datasets[i]["data"] = slicedValues; //values are updated
     }
-
     myChart.update(); //update the chart
-    for(var i = 0; i < dataSet.length; i++){ 
-        console.log(dataSet);
-        myChart.data.datasets[i]["data"] = dataSet[i]["data"]; //values are updated
-    }
 }
 
 
@@ -862,26 +852,262 @@ function updateTotalValue(context){ //updating the total value of the portfolio.
     loader.style.display = "none"; //hide loader
     loaderOverlay.style.display = "none";
 
-    saveData(context); //update the local storaage
+    saveData(); //update the local storaage
 }
 
 //localstorage functions
-function saveData(context){
+function saveData(){
     var portfolioData = []; //we push here our portfolio objects
 
     var portfolios = document.getElementsByClassName("portfolioDiv");
     //create portfolio objects
 
-    //portfolio properties to be saved: portfolio name, chosen currency, stock name, unit value, quantitie, total value and portfolio total value.
+    //portfolio properties to be saved: portfolio name, chosen currency, stock name, unit value, quantity, total value and portfolio total value.
     for(var i = 0; i < portfolios.length; i++){ //create and push each portfolio object to the array
-        var portfolioObject = {};
-        portfolioObject["portfolioName"] =  context.parentNode.parentNode.childNodes[0].childNodes[0].innerHTML;
-        portfolioData.push(portfolioObject);
+
+        var portfolioObject = {}; //create portfolio object
+
+        portfolioObject["portfolioName"] =  portfolios[i].childNodes[0].childNodes[0].innerHTML;
+        portfolioObject["currency"] = portfolios[i].childNodes[0].childNodes[1].disabled; //if true, euro is chosen
+
+
+        var portfolioTable = portfolios[i].childNodes[1].childNodes[0];
+        var tableLength = portfolioTable.rows.length;
+
+        var stockNames = [];
+        var unitValues = [];
+        var quantities = [];
+        var totalStockValues = [];
+
+        var titleCell = 0;
+
+        for(var j = 1; j < tableLength; j++){ //for each row, we add the elements to the tableObject.
+
+            var stockName = portfolioTable.getElementsByTagName("td")[titleCell].innerText;
+            var unitValue = portfolioTable.getElementsByTagName("td")[titleCell + 1].innerText;
+            var quantity = portfolioTable.getElementsByTagName("td")[titleCell + 2].innerText;
+            var totalStockValue = portfolioTable.getElementsByTagName("td")[titleCell + 3].innerText;
+
+            stockNames.push(stockName);
+            unitValues.push(unitValue);
+            quantities.push(quantity);
+            totalStockValues.push(totalStockValue);
+
+            titleCell += 5;
+        }
+
+        var tableObject = { //create table object which contains all the stock info in one portfolio.
+            stockNames : stockNames,
+            unitValues : unitValues,
+            quantities : quantities,
+            totalStockValues : totalStockValues
+        };
+
+        portfolioObject["table"] = tableObject; //add table to portfolio object
+
+        portfolioObject["portfolioValue"] = portfolios[i].childNodes[2].childNodes[0].nodeValue;
+
+        portfolioData.push(portfolioObject); //add portfolio object to data list
     }
-    console.log(JSON.stringify(portfolioData));
     localStorage.setItem('portfolioData', JSON.stringify(portfolioData)) //save the data with json stringify
 }
 function loadData(){
-    var portfolios = localStorage.getItem('portfolioData');
-    console.log(portfolios);
+    var portfolios = JSON.parse(localStorage.getItem('portfolioData'));
+    if(portfolios == null){ //if local storage is empty, we end the function execution
+        return;
+    }
+    console.log(portfolios.length);
+
+    for (var i = 0; i < portfolios.length; i++){
+        console.log(i);
+
+        //we need to create a div for each portfolio.
+        var portfolioName = portfolios[i]["portfolioName"];
+        var totalValue = portfolios[i]["portfolioValue"];
+
+        var portfolioList = document.getElementById("portfolios");
+        var portfolioDiv = document.createElement("div"); //create portfolio div
+        portfolioDiv.style.cssText = "width: 70vh; height: 40vh; border: 2px solid black; position: relative; float: left; margin-top: 15px; margin-left: 15px;";
+        portfolioDiv.className = "portfolioDiv";
+
+        topDiv = document.createElement("div");
+        topDiv.style.cssText = "position: relative; top: 0; width: 100%; margin-top: 5px; margin-left: 5px; font-size: 18px;";
+
+        middleDiv = document.createElement("div");
+        middleDiv.id = "middleDiv";
+        middleDiv.style.cssText = "position: relative; top: 10%; width: 90%; height: 50%; border: 2px solid black; font-size: 14px; margin: 0 auto; overflow-y: scroll; overflow-x: hidden;";
+
+        totalValueDiv = document.createElement("div");
+        totalValueDiv.id = "totalValueDiv";
+        totalValueDiv.style.cssText = "position: relative; width: 50%; height: 10%; margin-left: 5%; margin-top: 9%; font-weight: bold;";
+
+        bottomDiv = document.createElement("div"); //create div for bottom line (three buttons)
+        bottomDiv.style.cssText = "position: absolute; bottom: 0; width: 100%";
+
+        loaderDiv = document.createElement("div"); //create loader and loader overlay divs
+        loaderDiv.id = "loader";
+
+        loaderOverlay = document.createElement("div");
+        loaderOverlay.id = "loaderOverlay";
+
+        //create title
+
+        var name = document.createElement("span");
+        name.id = "title";
+        name.innerHTML = portfolioName;
+
+        //create and append table headers to table
+
+        var tbl = document.createElement("table"); //create the table
+        tbl.id = "myTable";
+        var tr = document.createElement("tr"); //create header row
+        
+        var th1 = document.createElement("th"); //create headers (5)
+        var th2 = document.createElement("th");
+        var th3 = document.createElement("th");
+        var th4 = document.createElement("th");
+        var th5 = document.createElement("th");
+        
+        var text1 = document.createTextNode("Name"); //write text for headers (5)
+        var text2 = document.createTextNode("Unit value");
+        var text3 = document.createTextNode("Quantity"); 
+        var text4 = document.createTextNode("Total value"); 
+        var text5 = document.createTextNode("Select"); 
+        
+        th1.appendChild(text1); //append text to headers
+        th2.appendChild(text2);
+        th3.appendChild(text3);
+        th4.appendChild(text4);
+        th5.appendChild(text5);
+        
+        tr.appendChild(th1); //append headers to row
+        tr.appendChild(th2);
+        tr.appendChild(th3);
+        tr.appendChild(th4);
+        tr.appendChild(th5);
+        
+        tbl.appendChild(tr); //append row to table
+        middleDiv.appendChild(tbl); //append table to middle div
+
+        var currency = "$";
+        
+        var totalValueText = document.createTextNode(totalValue);
+        totalValueDiv.appendChild(totalValueText);
+
+        //create and append buttons
+
+        var showEurosButton = document.createElement("button");
+        showEurosButton.className = "currencyButton";
+        showEurosButton.innerHTML = "Show in €";
+
+        var showDollarsButton = document.createElement("button");
+        showDollarsButton.className = "currencyButton";
+        showDollarsButton.innerHTML = "Show in $";
+        showDollarsButton.disabled = true; //we begin initially with dollars.
+
+        var removePortfolioButton = document.createElement("button");
+        removePortfolioButton.id = "removePortfolioButton";
+        removePortfolioButton.innerHTML = "Remove portfolio";
+
+        var addButton = document.createElement("button");
+        addButton.className = "portfolioButton";
+        addButton.innerHTML = "Add stock";
+
+        var perfButton = document.createElement("button");
+        perfButton.className = "portfolioButton";
+        perfButton.innerHTML = "Perf graph";
+
+        var refreshButton = document.createElement("button");
+        refreshButton.className = "portfolioButton";
+        refreshButton.innerHTML = "Refresh";
+
+        var removeSelectedButton = document.createElement("button");
+        removeSelectedButton.id = "removeSelectedButton";
+        removeSelectedButton.innerHTML = "Remove selected";
+
+        topDiv.appendChild(name);
+        topDiv.appendChild(showEurosButton);
+        topDiv.appendChild(showDollarsButton);
+        topDiv.appendChild(removePortfolioButton);
+
+        bottomDiv.appendChild(addButton);
+        bottomDiv.appendChild(perfButton);
+        bottomDiv.appendChild(refreshButton);
+        bottomDiv.appendChild(removeSelectedButton);
+
+        portfolioDiv.appendChild(topDiv); //append top line with portfolio name, currency exchange and removal..
+        portfolioDiv.appendChild(middleDiv); //append middle line (data)
+        portfolioDiv.appendChild(totalValueDiv); //append div line with total value
+        portfolioDiv.appendChild(bottomDiv); //append bottom line to the parent
+
+        portfolioDiv.appendChild(loaderDiv); //append loader to portfolio
+        portfolioDiv.appendChild(loaderOverlay);
+
+        showEurosButton.addEventListener("click", showEuros); //add listeners to the buttons
+        showDollarsButton.addEventListener("click", showDollars);
+        removePortfolioButton.addEventListener("click", removePortfolio); 
+
+        addButton.addEventListener("click", addStock);
+        perfButton.addEventListener("click", valuePerformance);
+        refreshButton.addEventListener("click", refreshStocks);
+        removeSelectedButton.addEventListener("click", removeSelected);
+
+        portfolioList.appendChild(portfolioDiv); //append portfolio to the list of portfolios
+    
+
+        //we also need to add stock data to the table.
+        var table = portfolios[i]["table"];
+        var unitKeys = Object.keys(portfolios[i]["table"]);
+
+        if(table[unitKeys[0]].length == 0){ //in case there was no stocks in the portfolio, we end the execution of the function
+            return;
+        }
+
+        console.log(table);
+
+        for(var k = 0; k < table[unitKeys[0]].length; k++){
+
+            var stockName = table[unitKeys[0]][k];
+            var unitValue = table[unitKeys[1]][k];
+            var quantity = table[unitKeys[2]][k];
+            var totalStockValue = table[unitKeys[3]][k];
+
+            //for each loop, create a row.
+
+            var portfolioTable = middleDiv.childNodes[0]; //the table is the first child of the middle div
+            var tr = document.createElement("tr"); //create new row
+            
+            var stockCell = document.createElement("td"); //create 5 new table cells
+            var unitValueCell = document.createElement("td");
+            var quantityCell = document.createElement("td");
+            var totalValueCell = document.createElement("td");
+            var selectCell = document.createElement("td");
+            
+            
+            var text = document.createTextNode(stockName);
+            var text2 = document.createTextNode(unitValue);
+            var text3 = document.createTextNode(quantity);
+            var text4 = document.createTextNode(totalStockValue);
+            
+            var checkBox = document.createElement('input'); //create checkbox
+            checkBox.setAttribute('type', 'checkbox');
+            
+            stockCell.appendChild(text);
+            unitValueCell.appendChild(text2);
+            quantityCell.appendChild(text3);
+            totalValueCell.appendChild(text4);
+            selectCell.appendChild(checkBox);
+            
+            tr.appendChild(stockCell);
+            tr.appendChild(unitValueCell);
+            tr.appendChild(quantityCell);
+            tr.appendChild(totalValueCell);
+            tr.appendChild(selectCell);
+            
+            portfolioTable.appendChild(tr);
+            
+            portfolioTable.style.display = "table"; //show table (it is initially hidden)
+        }
+    }
+
 }

@@ -25,8 +25,8 @@ function getRequest(url, callback, context){
             callback(getData, context); //pass the list and context to addStockCallback function
         }
         else if (this.status != 200 && this.status != 301 && this.status != 302){ //errors which are risen when the API fails to deliver desired data, which is unfortunately common for AlphaVantage.
-            loader = context.parentNode.parentNode.childNodes[4]; //hide loaders 
-            loaderOverlay = context.parentNode.parentNode.childNodes[5];
+            var loader = context.parentNode.parentNode.childNodes[4]; //hide loaders 
+            var loaderOverlay = context.parentNode.parentNode.childNodes[5];
         
             loader.style.display = "none";
             loaderOverlay.style.display = "none";
@@ -214,8 +214,8 @@ function showEuros(){
 
     var context = this;
 
-    loader = context.parentNode.parentNode.childNodes[4]; //initiate loading sign and overlay
-    loaderOverlay = context.parentNode.parentNode.childNodes[5];
+    var loader = context.parentNode.parentNode.childNodes[4]; //initiate loading sign and overlay
+    var loaderOverlay = context.parentNode.parentNode.childNodes[5];
 
     loader.style.display = "block";
     loaderOverlay.style.display = "block";
@@ -269,8 +269,8 @@ function showEurosCallback(data, context){
 function showDollars(){
     var context = this;
     
-    loader = context.parentNode.parentNode.childNodes[4]; //initiate loading sign and overlay
-    loaderOverlay = context.parentNode.parentNode.childNodes[5];
+    var loader = context.parentNode.parentNode.childNodes[4]; //initiate loading sign and overlay
+    var loaderOverlay = context.parentNode.parentNode.childNodes[5];
 
     loader.style.display = "block";
     loaderOverlay.style.display = "block";
@@ -352,8 +352,8 @@ function addStock(){
     }
 
     
-    loader = context.parentNode.parentNode.childNodes[4]; //initiate loading sign and overlay
-    loaderOverlay = context.parentNode.parentNode.childNodes[5];
+    var loader = context.parentNode.parentNode.childNodes[4]; //initiate loading sign and overlay
+    var loaderOverlay = context.parentNode.parentNode.childNodes[5];
     loader.style.display = "block";
     loaderOverlay.style.display = "block";
 
@@ -472,8 +472,8 @@ function valuePerformance(){ //API request for every stock with historical data 
     
     var context = this;
     
-    loader = context.parentNode.parentNode.childNodes[4]; //initiate loading sign and overlay
-    loaderOverlay = context.parentNode.parentNode.childNodes[5];
+    var loader = context.parentNode.parentNode.childNodes[4]; //initiate loading sign and overlay
+    var loaderOverlay = context.parentNode.parentNode.childNodes[5];
 
     loader.style.display = "block";
     loaderOverlay.style.display = "block";
@@ -497,8 +497,12 @@ function valuePerformance(){ //API request for every stock with historical data 
     }
 }
 function gatherHistoricalData(data, context){
-    loader = context.parentNode.parentNode.childNodes[4];
-    loaderOverlay = context.parentNode.parentNode.childNodes[5];
+    var loader = context.parentNode.parentNode.childNodes[4];
+    var loaderOverlay = context.parentNode.parentNode.childNodes[5];
+
+    var topDiv = context.parentNode.parentNode.childNodes[0]; //if the user chose €, we want to show the graphs in €
+    var showEurosButton = topDiv.childNodes[1];
+
     getRequests--;
     try{
         var unitKeys = Object.keys(data["Time Series (Daily)"]); //the keys are the dates
@@ -511,6 +515,9 @@ function gatherHistoricalData(data, context){
     }
     for (var i = 0; i<unitKeys.length; i++){
         var unitValue = data["Time Series (Daily)"][unitKeys[i]]["5. adjusted close"]; //use the adjusted close
+        if(showEurosButton.disabled){ // in this case, euros are chosen. We use the latest rate which we got when we clicked on the "show in €" or "Refresh exchange rate" button.
+            unitValue = Math.round(unitValue * parseFloat(usdToEurRate) * 100) / 100;
+        }
         var dateValuePair = {"date": unitKeys[i], "value": unitValue};
         historicalDataList.push(dateValuePair);
     }
@@ -521,8 +528,9 @@ function gatherHistoricalData(data, context){
     }
 }
 function drawGraph(context){ //TODO: adjust time window, adjust so that multiple graphs with different start dates are placed accordingly.
-    loader = context.parentNode.parentNode.childNodes[4];
-    loaderOverlay = context.parentNode.parentNode.childNodes[5];
+    var loader = context.parentNode.parentNode.childNodes[4];
+    var loaderOverlay = context.parentNode.parentNode.childNodes[5];
+
     loader.style.display = "none"; //hide the loading spinner and overlay
     loaderOverlay.style.display = "none";
 
@@ -732,8 +740,8 @@ function refreshStocks(){ //refresh all the stock values, which means we have to
 
     var context = this;
 
-    loader = context.parentNode.parentNode.childNodes[4]; //initiate loading sign and overlay
-    loaderOverlay = context.parentNode.parentNode.childNodes[5];;
+    var loader = context.parentNode.parentNode.childNodes[4]; //initiate loading sign and overlay
+    var loaderOverlay = context.parentNode.parentNode.childNodes[5];;
 
     loader.style.display = "block";
     loaderOverlay.style.display = "block";
@@ -836,8 +844,8 @@ function removeSelected(){
 
 function updateTotalValue(context){ //updating the total value of the portfolio.
     
-    loader = context.parentNode.parentNode.childNodes[4]; //we want to hide the loader
-    loaderOverlay = context.parentNode.parentNode.childNodes[5];
+    var loader = context.parentNode.parentNode.childNodes[4]; //we want to hide the loader
+    var loaderOverlay = context.parentNode.parentNode.childNodes[5];
 
     //set the correct currency 
     var topDiv = context.parentNode.parentNode.childNodes[0]; 

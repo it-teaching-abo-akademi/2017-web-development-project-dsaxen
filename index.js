@@ -25,7 +25,7 @@ function getRequest(url, callback, context){
             callback(getData, context); //pass the list and context to addStockCallback function
         }
         else if (this.status != 200 && this.status != 301 && this.status != 302){ //errors which are risen when the API fails to deliver desired data, which is unfortunately common for AlphaVantage.
-            loader = context.parentNode.parentNode.childNodes[4]; //initiate loading sign and overlay
+            loader = context.parentNode.parentNode.childNodes[4]; //hide loaders 
             loaderOverlay = context.parentNode.parentNode.childNodes[5];
         
             loader.style.display = "none";
@@ -491,6 +491,8 @@ function valuePerformance(){ //API request for every stock with historical data 
     }
 }
 function gatherHistoricalData(data, context){
+    loader = context.parentNode.parentNode.childNodes[4];
+    loaderOverlay = context.parentNode.parentNode.childNodes[5];
     getRequests--;
     try{
         var unitKeys = Object.keys(data["Time Series (Daily)"]); //the keys are the dates
@@ -513,6 +515,8 @@ function gatherHistoricalData(data, context){
     }
 }
 function drawGraph(context){ //TODO: adjust time window, adjust so that multiple graphs with different start dates are placed accordingly.
+    loader = context.parentNode.parentNode.childNodes[4];
+    loaderOverlay = context.parentNode.parentNode.childNodes[5];
     loader.style.display = "none"; //hide the loading spinner and overlay
     loaderOverlay.style.display = "none";
 
@@ -545,13 +549,17 @@ function drawGraph(context){ //TODO: adjust time window, adjust so that multiple
     uniqueDates.shift(); //we delete the first, "undefined" term
 
     var dataSet = []; //we need to compose our dataset before we send it to the chart constructor.
-    var colors = ["rgba(160, 255, 102, 0.3)", "rgba(220, 20, 60, 0.3)", "rgba(0, 204, 204, 0.3)" ,"rgba(26, 10, 56, 0.3)"];
+
+    //LIST OF AVAILABLE COLORS. Each time a color is randomly chosen and removed from the list. The color list includes 8 colors.
+
+    var colors = ["rgba(220, 20, 60, 0.6)", "rgba(0, 0, 205, 0.6)", "rgba(0, 205, 0, 0.6)" ,"rgba(155, 48, 255, 0.6)", "rgba(41, 36, 33, 0.6)", "rgba(255, 165, 0, 0.6)", "rgba(255, 215, 0, 0.6)", "rgba(0, 245, 255, 0.6)"];
+
+    //Colors in order: crimson, blue, lime, purple, black, orange, gold, turquoise
     
     for (var i = 0; i<stockNameList.length; i++){ //for every stock, construct a data array
         var stockValues = [];
 		if(stockNameList.length == i + 1){
             stockValues = valueList.slice(stockNameList[i]["startIndex"], valueList.length-1);
-            console.log(stockValues);
 		}
 		else{
             stockValues = valueList.slice(stockNameList[i]["startIndex"], parseInt(stockNameList[i+1]["startIndex"]) - 1);
@@ -559,8 +567,13 @@ function drawGraph(context){ //TODO: adjust time window, adjust so that multiple
 		var randomColor = colors[Math.floor(Math.random() * colors.length)]; //choose a random color and remove it
 		var index = colors.indexOf(randomColor);
         colors.splice(index, 1);
+
+        var difference = JSON.parse(JSON.stringify(uniqueDates.length - stockValues.length)); //in case one of the graphs has less data points that the others, the missing points are filled in as 0.
+        for(var j = 1; j < difference; j++){
+            stockValues.unshift('');
+        }
         
-		var stockInfo = {
+		var stockInfo = { //create data object to be pushed to the data set later in the chart constructor.
 			label : stockNameList[i]["stockName"],
             backgroundColor: randomColor,
             borderColor: randomColor,

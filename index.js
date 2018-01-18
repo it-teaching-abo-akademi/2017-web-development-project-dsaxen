@@ -656,7 +656,7 @@ function drawGraph(context){ //TODO: adjust time window, adjust so that multiple
 
     var span = document.createElement("span");
     span.id = "warningSpan";
-    span.innerHTML = "Please do not select weekends or holidays as start or end dates.";
+    span.innerHTML = "Please do not select weekends or holidays as start or end dates. Click on the grey area to return to the portfolio view.";
 
     dateDiv.appendChild(startDate);
     dateDiv.appendChild(endDate);

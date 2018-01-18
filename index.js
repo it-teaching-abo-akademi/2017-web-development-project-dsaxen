@@ -382,6 +382,10 @@ function addStockCallback(data, context){
         return;
     }
     var unitKeys = Object.keys(data["Stock Quotes"]); //find the keys
+    if(unitKeys === undefined){
+        alert("You typed a stock symbol that does not exist. Please try again.");
+        return;
+    }
     var unitValue = data["Stock Quotes"][unitKeys[0]]["2. price"];
     unitValue = Math.round(unitValue*100)/100; //rounds to two decimals
 

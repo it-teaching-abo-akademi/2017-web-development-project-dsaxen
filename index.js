@@ -493,7 +493,6 @@ function valuePerformance(){ //API request for every stock with historical data 
     }
 }
 function gatherHistoricalData(data, context){
-    console.log(data);
     getRequests--;
     try{
         var unitKeys = Object.keys(data["Time Series (Daily)"]); //the keys are the dates
@@ -549,7 +548,7 @@ function drawGraph(context){ //TODO: adjust time window, adjust so that multiple
     uniqueDates.shift(); //we delete the first, "undefined" term
 
     var dataSet = []; //we need to compose our dataset before we send it to the chart constructor.
-    var colors = ["rgba(160, 255, 102, 0.3)", "rgba(220, 20, 60, 0.3)", "rgba(0, 204, 204, 0.3)", "rgba(37, 252, 234, 0.3)"];
+    var colors = ["rgba(160, 255, 102, 0.3)", "rgba(220, 20, 60, 0.3)", "rgba(0, 204, 204, 0.3)" ,"rgba(26, 10, 56, 0.3)"];
     
     for (var i = 0; i<stockNameList.length; i++){ //for every stock, construct a data array
         var stockValues = [];
@@ -573,6 +572,7 @@ function drawGraph(context){ //TODO: adjust time window, adjust so that multiple
         };	
         dataSet.push(stockInfo);
     }
+    console.log(dataSet);
 
     var portfolioName = context.parentNode.parentNode.childNodes[0].childNodes[0].innerHTML;
     
@@ -664,6 +664,10 @@ function drawGraph(context){ //TODO: adjust time window, adjust so that multiple
                     scaleLabel: {
                         display: true,
                         labelString: 'Date'
+                    },
+                    ticks: {
+                        suggestedMin: "2004-07-17",
+                        suggestedMax: "2018-01-18",
                     }
                 }],
                 yAxes: [{
@@ -678,10 +682,12 @@ function drawGraph(context){ //TODO: adjust time window, adjust so that multiple
     });
     adjustButton.addEventListener("click", function(){
         updateChart(myChart, uniqueDates, dataSet);
-    }, false); //we add the event listener to the button
+    }); //we add the event listener to the button
 }
 
 function updateChart(myChart, uniqueDates, dataSet){ //if the user chooses to update the chart, we adjust the time window according to the choices the user made.
+    var newSet = [];
+
     var startDate = document.getElementById("startDate").value;
     var endDate = document.getElementById("endDate").value;
 
@@ -690,10 +696,23 @@ function updateChart(myChart, uniqueDates, dataSet){ //if the user chooses to up
     myChart.data.labels = slicedDates; //dates are updated, but we need to update the values
 
     //update values: the first value must be of the same index
+    for(var i = 0; i < dataSet.length; i++){ //fix each and every dataSet so that the values actually start from the 
+        var stockValues = myChart.data.datasets[i]["data"]; //fetch values
+        var slicedValues = [];
 
+        slicedValues = stockValues.slice(stockValues.length - slicedDates.length, stockValues.length - 1) //start: stockvalues.length - slicedDates.length, end: stockvalues.length
 
-    myChart.update();
+        myChart.data.datasets[i]["data"] = slicedValues; //values are updated
+    }
+
+    myChart.update(); //update the chart
+    for(var i = 0; i < dataSet.length; i++){ 
+        console.log(dataSet);
+        myChart.data.datasets[i]["data"] = dataSet[i]["data"]; //values are updated
+    }
 }
+
+
 function refreshStocks(){ //refresh all the stock values, which means we have to make an API request for every stock in the portfolio.
     
     var context = this;
